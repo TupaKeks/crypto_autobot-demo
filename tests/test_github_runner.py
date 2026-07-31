@@ -18,6 +18,7 @@ class GitHubRunnerTests(unittest.TestCase):
                 "available_balance": 12345.67,
                 "position_mode": "one-way",
             },
+            "logs": [],
             "stats": {
                 "balance": 12345.67,
                 "initial_balance": 10000,
@@ -82,6 +83,21 @@ class GitHubRunnerTests(unittest.TestCase):
         self.assertEqual(payload["trades"][0]["reason"], "Binance position closed")
         self.assertNotIn("pnl", payload["trades"][0])
         self.assertNotIn("qty", payload["trades"][0])
+
+    def test_diagnostic_redacts_environment_secrets(self):
+        state = self.sample_state()
+        state["broker_status"]["connected"] = False
+        state["broker_status"]["message"] = "Invalid key demo-key-value"
+        state["logs"] = [{"time": "now", "message": "connection error demo-key-value"}]
+
+        from unittest.mock import patch
+
+        with patch.dict("os.environ", {"BINANCE_DEMO_API_KEY": "demo-key-value"}):
+            payload = sanitize_public_state(state)
+
+        serialized = json.dumps(payload)
+        self.assertNotIn("demo-key-value", serialized)
+        self.assertIn("[redacted]", serialized)
 
 
 if __name__ == "__main__":

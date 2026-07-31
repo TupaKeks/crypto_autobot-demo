@@ -27,6 +27,13 @@ PRIVATE_KEYS = {
     "unrealized_pnl",
 }
 
+SECRET_ENV_NAMES = (
+    "BINANCE_DEMO_API_KEY",
+    "BINANCE_DEMO_API_SECRET",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+)
+
 
 def _number(value: Any, digits: int = 2) -> float | None:
     try:
@@ -50,6 +57,15 @@ def _trade_result(trade: dict[str, Any]) -> str:
 def _public_reason(value: Any) -> str:
     reason = str(value or "")
     return reason.split("; realized=", 1)[0]
+
+
+def _safe_diagnostic(value: Any) -> str:
+    message = str(value or "").replace("\n", " ").strip()
+    for name in SECRET_ENV_NAMES:
+        secret = os.environ.get(name, "")
+        if secret:
+            message = message.replace(secret, "[redacted]")
+    return message[:500]
 
 
 def _public_position(symbol: str, position: dict[str, Any]) -> dict[str, Any]:
@@ -77,6 +93,7 @@ def sanitize_public_state(
     positions = state.get("positions", {})
     latest = state.get("latest", {})
     trades = state.get("trades", [])
+    logs = state.get("logs", [])
 
     public_positions = [
         _public_position(str(symbol), dict(position))
@@ -107,6 +124,13 @@ def sanitize_public_state(
             }
         )
 
+    diagnostics = []
+    for item in logs:
+        message = _safe_diagnostic(item.get("message"))
+        lowered = message.lower()
+        if message and ("error" in lowered or "failed" in lowered or "disconnected" in lowered):
+            diagnostics.append({"time": item.get("time"), "message": message})
+
     return {
         "schema_version": 1,
         "generated_at": state.get("updated_at"),
@@ -116,7 +140,7 @@ def sanitize_public_state(
             "connected": bool(broker.get("connected", False)),
             "environment": "demo",
             "position_mode": broker.get("position_mode"),
-            "message": "Connected" if broker.get("connected") else "Connection problem",
+            "message": "Connected" if broker.get("connected") else _safe_diagnostic(broker.get("message")) or "Connection problem",
         },
         "stats": {
             "return_percent": _number(stats.get("return_percent")) or 0.0,
@@ -129,6 +153,7 @@ def sanitize_public_state(
         "positions": public_positions,
         "latest": public_latest,
         "trades": public_trades,
+        "diagnostics": diagnostics[:10],
         "workflow": {"repository": repository, "run_url": run_url},
     }
 
@@ -174,6 +199,12 @@ def main() -> int:
     connected = payload["broker"]["connected"]
     orders = "enabled" if payload["orders_enabled"] else "disabled"
     print(f"Demo scan complete: connected={connected}, orders={orders}, symbols={len(payload['latest'])}")
+    if not connected:
+        print(f"Binance Demo diagnostic: {payload['broker']['message']}")
+    for item in result.get("results", []):
+        status = _safe_diagnostic(item.get("status"))
+        if "error" in status.lower() or "failed" in status.lower():
+            print(status)
     return 0
 
 
