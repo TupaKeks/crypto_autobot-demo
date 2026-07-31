@@ -1,0 +1,19 @@
+[Unit]
+Description=Crypto Autobot Binance Demo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/etc/crypto-autobot.env
+ExecStart=/usr/bin/python3 /home/ubuntu/crypto_autobot/bot.py --config /home/ubuntu/crypto_autobot/config.demo.example.json --enable-orders
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

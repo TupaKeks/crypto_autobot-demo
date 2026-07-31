@@ -1,0 +1,111 @@
+name: Crypto Autobot Demo
+
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: crypto-autobot-demo
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout bot
+        uses: actions/checkout@v6
+        with:
+          path: crypto_autobot
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Check required secrets
+        env:
+          BINANCE_DEMO_API_KEY: ${{ secrets.BINANCE_DEMO_API_KEY }}
+          BINANCE_DEMO_API_SECRET: ${{ secrets.BINANCE_DEMO_API_SECRET }}
+          STATE_ENCRYPTION_PASSWORD: ${{ secrets.STATE_ENCRYPTION_PASSWORD }}
+        run: |
+          test -n "$BINANCE_DEMO_API_KEY" || { echo "Missing BINANCE_DEMO_API_KEY"; exit 1; }
+          test -n "$BINANCE_DEMO_API_SECRET" || { echo "Missing BINANCE_DEMO_API_SECRET"; exit 1; }
+          test -n "$STATE_ENCRYPTION_PASSWORD" || { echo "Missing STATE_ENCRYPTION_PASSWORD"; exit 1; }
+
+      - name: Restore encrypted bot state
+        uses: actions/cache@v4
+        with:
+          path: crypto_autobot/.runtime/demo-state.tar.gz.enc
+          key: crypto-autobot-demo-state-${{ github.run_id }}
+          restore-keys: |
+            crypto-autobot-demo-state-
+
+      - name: Decrypt previous state
+        env:
+          STATE_ENCRYPTION_PASSWORD: ${{ secrets.STATE_ENCRYPTION_PASSWORD }}
+        run: |
+          if [ -f crypto_autobot/.runtime/demo-state.tar.gz.enc ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 \
+              -in crypto_autobot/.runtime/demo-state.tar.gz.enc \
+              -pass env:STATE_ENCRYPTION_PASSWORD \
+              | tar -xz -C crypto_autobot
+          fi
+
+      - name: Run tests
+        run: python3 -m unittest discover -s crypto_autobot/tests -v
+
+      - name: Scan Binance Demo
+        env:
+          BINANCE_DEMO_API_KEY: ${{ secrets.BINANCE_DEMO_API_KEY }}
+          BINANCE_DEMO_API_SECRET: ${{ secrets.BINANCE_DEMO_API_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DEMO_ORDERS_ENABLED: ${{ vars.DEMO_ORDERS_ENABLED }}
+        run: |
+          args=()
+          if [ "${DEMO_ORDERS_ENABLED,,}" = "true" ]; then
+            args+=(--enable-orders)
+          fi
+          python3 crypto_autobot/github_runner.py \
+            --config crypto_autobot/config.demo.example.json \
+            --output crypto_autobot/github_pages/state.json \
+            "${args[@]}"
+
+      - name: Encrypt current bot state
+        if: always()
+        env:
+          STATE_ENCRYPTION_PASSWORD: ${{ secrets.STATE_ENCRYPTION_PASSWORD }}
+        run: |
+          mkdir -p crypto_autobot/.runtime crypto_autobot/data
+          touch crypto_autobot/data/trades_demo.csv
+          if [ -f crypto_autobot/data/state_demo.json ]; then
+            tar -czf - -C crypto_autobot data/state_demo.json data/trades_demo.csv \
+              | openssl enc -aes-256-cbc -salt -pbkdf2 \
+                  -out crypto_autobot/.runtime/demo-state.tar.gz.enc \
+                  -pass env:STATE_ENCRYPTION_PASSWORD
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload dashboard
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: crypto_autobot/github_pages
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: scan
+    steps:
+      - name: Deploy dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4

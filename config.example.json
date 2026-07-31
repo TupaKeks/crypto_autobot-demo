@@ -1,0 +1,59 @@
+{
+  "app": {
+    "name": "Crypto Autobot",
+    "host": "127.0.0.1",
+    "port": 8090,
+    "timezone": "Europe/Warsaw",
+    "scan_interval_seconds": 60,
+    "data_dir": "crypto_autobot/data"
+  },
+  "market": {
+    "base_url": "https://fapi.binance.com",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    "interval": "4h",
+    "history_limit": 320
+  },
+  "broker": {
+    "mode": "paper",
+    "recv_window_ms": 5000,
+    "quote_asset": "USDT",
+    "leverage": 2,
+    "margin_type": "ISOLATED",
+    "working_type": "MARK_PRICE",
+    "price_protect": false
+  },
+  "strategy": {
+    "enabled": true,
+    "fast_ema": 20,
+    "slow_ema": 100,
+    "min_ema_gap_percent": 0.25,
+    "slow_slope_lookback": 6,
+    "min_slow_slope_percent": 0.0,
+    "atr_length": 14,
+    "adx_length": 14,
+    "min_adx": 20.0,
+    "breakout_lookback": 30,
+    "volume_sma_length": 20,
+    "min_volume_factor": 1.0,
+    "min_atr_percent": 0.2,
+    "max_atr_percent": 8.0,
+    "stop_atr": 2.0,
+    "target_atr": 3.0,
+    "trail_after_r": 99.0,
+    "trail_atr": 2.0,
+    "allow_shorts": true
+  },
+  "account": {
+    "initial_balance": 10000.0,
+    "risk_per_trade_percent": 0.5,
+    "max_open_positions": 3,
+    "max_daily_trades": 6,
+    "max_daily_loss_percent": 2.0,
+    "same_candle_exit": "stop_first"
+  },
+  "notifications": {
+    "telegram_enabled": false,
+    "token_env": "TELEGRAM_BOT_TOKEN",
+    "chat_id_env": "TELEGRAM_CHAT_ID"
+  }
+}

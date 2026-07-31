@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Crypto Autobot Demo</title>
+  <style>
+    :root {
+      --ink: #17201d;
+      --muted: #65716c;
+      --line: #dfe6e2;
+      --surface: #ffffff;
+      --page: #f4f7f5;
+      --green: #087f5b;
+      --green-soft: #dff4eb;
+      --red: #c92a2a;
+      --red-soft: #fde8e8;
+      --amber: #9a6700;
+      --amber-soft: #fff3bf;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 34px 0 56px; }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    h1 { margin: 0; font-size: 28px; font-weight: 760; }
+    h2 { margin: 0 0 12px; font-size: 17px; }
+    p { margin: 5px 0 0; color: var(--muted); }
+    button {
+      border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink);
+      padding: 9px 13px; font: inherit; font-weight: 650; cursor: pointer;
+    }
+    button:hover { border-color: #aebbb5; }
+    button:disabled { cursor: wait; opacity: .65; }
+    .status-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+    .badge { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; padding: 5px 9px; font-size: 13px; font-weight: 700; }
+    .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .ok { color: var(--green); background: var(--green-soft); }
+    .bad { color: var(--red); background: var(--red-soft); }
+    .warn { color: var(--amber); background: var(--amber-soft); }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .metric { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 16px; }
+    .metric span { display: block; color: var(--muted); font-size: 13px; }
+    .metric strong { display: block; margin-top: 7px; font-size: 25px; }
+    .panel { margin-top: 18px; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    table { width: 100%; border-collapse: collapse; min-width: 650px; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+    th { color: var(--muted); background: #fafcfb; font-size: 12px; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    .side-long, .result-win { color: var(--green); font-weight: 700; }
+    .side-short, .result-loss { color: var(--red); font-weight: 700; }
+    .empty { padding: 24px; text-align: center; color: var(--muted); }
+    .error { display: none; border: 1px solid #f1b7b7; border-radius: 8px; background: var(--red-soft); color: var(--red); padding: 12px; margin-bottom: 18px; }
+    footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 24px; color: var(--muted); font-size: 13px; }
+    footer a { color: inherit; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 22px, 1120px); padding-top: 22px; }
+      header { align-items: stretch; flex-direction: column; gap: 15px; }
+      header button { align-self: flex-start; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      footer { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Crypto Autobot Demo</h1>
+        <p>Binance Demo Futures · обновление каждые 30 минут</p>
+        <div class="status-row">
+          <span id="connection" class="badge warn">Ожидание данных</span>
+          <span id="orders" class="badge warn">Ордера выключены</span>
+          <span id="updated" class="badge warn">Нет обновлений</span>
+        </div>
+      </div>
+      <button id="refresh" type="button">Обновить</button>
+    </header>
+
+    <div id="error" class="error" role="alert"></div>
+
+    <section class="metrics" aria-label="Статистика">
+      <div class="metric"><span>Доходность Demo</span><strong id="return">0.00%</strong></div>
+      <div class="metric"><span>Win rate</span><strong id="winrate">0.00%</strong></div>
+      <div class="metric"><span>Закрыто сделок</span><strong id="closed">0</strong></div>
+      <div class="metric"><span>Открыто позиций</span><strong id="open">0</strong></div>
+    </section>
+
+    <section class="panel">
+      <h2>Рынок и сигналы</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Пара</th><th>Цена</th><th>Свеча</th><th>Состояние</th></tr></thead>
+        <tbody id="markets"></tbody>
+      </table></div>
+    </section>
+
+    <section class="panel">
+      <h2>Открытые позиции</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Пара</th><th>Сторона</th><th>Вход</th><th>Stop Loss</th><th>Take Profit</th></tr></thead>
+        <tbody id="positions"></tbody>
+      </table></div>
+    </section>
+
+    <section class="panel">
+      <h2>Последние сделки</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Время</th><th>Событие</th><th>Пара</th><th>Сторона</th><th>Результат</th><th>Причина</th></tr></thead>
+        <tbody id="trades"></tbody>
+      </table></div>
+    </section>
+
+    <footer>
+      <span>Read-only панель. Баланс, объём позиций и API-ключи не публикуются.</span>
+      <a id="run-link" href="#" hidden>Открыть последний запуск</a>
+    </footer>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const esc = (value) => String(value ?? "—").replace(/[&<>'"]/g, (char) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+    })[char]);
+    const num = (value) => value == null ? "—" : new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 8 }).format(value);
+    const empty = (columns, text) => `<tr><td colspan="${columns}" class="empty">${esc(text)}</td></tr>`;
+    const sideClass = (side) => side === "long" ? "side-long" : side === "short" ? "side-short" : "";
+
+    function render(data) {
+      const connected = Boolean(data.broker?.connected);
+      $("connection").className = `badge ${connected ? "ok" : "bad"}`;
+      $("connection").textContent = connected ? "Binance Demo подключён" : "Нет подключения";
+      $("orders").className = `badge ${data.orders_enabled ? "ok" : "warn"}`;
+      $("orders").textContent = data.orders_enabled ? "Demo-ордера включены" : "Ордера выключены";
+      $("updated").className = `badge ${data.generated_at ? "ok" : "warn"}`;
+      $("updated").textContent = data.generated_at ? new Date(data.generated_at).toLocaleString("ru-RU") : "Нет обновлений";
+      $("return").textContent = `${Number(data.stats?.return_percent || 0).toFixed(2)}%`;
+      $("winrate").textContent = `${Number(data.stats?.win_rate || 0).toFixed(2)}%`;
+      $("closed").textContent = data.stats?.closed_trades ?? 0;
+      $("open").textContent = data.stats?.open_positions ?? 0;
+
+      const markets = data.latest || [];
+      $("markets").innerHTML = markets.length ? markets.map((item) => `<tr>
+        <td><strong>${esc(item.symbol)}</strong></td><td>${num(item.price)}</td>
+        <td>${esc(item.time)}</td><td>${esc(item.status)}</td></tr>`).join("") : empty(4, "Данных пока нет");
+
+      const positions = data.positions || [];
+      $("positions").innerHTML = positions.length ? positions.map((item) => `<tr>
+        <td><strong>${esc(item.symbol)}</strong></td><td class="${sideClass(item.side)}">${esc(item.side)}</td>
+        <td>${num(item.entry)}</td><td>${num(item.stop)}</td><td>${num(item.target)}</td></tr>`).join("") : empty(5, "Открытых позиций нет");
+
+      const trades = data.trades || [];
+      $("trades").innerHTML = trades.length ? trades.map((item) => `<tr>
+        <td>${esc(item.time)}</td><td>${esc(item.event)}</td><td><strong>${esc(item.symbol)}</strong></td>
+        <td class="${sideClass(item.side)}">${esc(item.side)}</td><td class="result-${esc(item.result)}">${esc(item.result)}</td>
+        <td>${esc(item.reason)}</td></tr>`).join("") : empty(6, "Закрытых сделок пока нет");
+
+      const runLink = $("run-link");
+      if (data.workflow?.run_url) { runLink.href = data.workflow.run_url; runLink.hidden = false; }
+    }
+
+    async function load() {
+      const button = $("refresh");
+      button.disabled = true;
+      $("error").style.display = "none";
+      try {
+        const response = await fetch(`./state.json?t=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        render(await response.json());
+      } catch (error) {
+        $("error").textContent = `Не удалось загрузить статистику: ${error.message}`;
+        $("error").style.display = "block";
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    $("refresh").addEventListener("click", load);
+    load();
+    setInterval(load, 60000);
+  </script>
+</body>
+</html>

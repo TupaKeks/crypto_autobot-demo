@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "generated_at": null,
+  "mode": "demo",
+  "orders_enabled": false,
+  "broker": {
+    "connected": false,
+    "environment": "demo",
+    "position_mode": null,
+    "message": "Waiting for first workflow run"
+  },
+  "stats": {
+    "return_percent": 0,
+    "closed_trades": 0,
+    "wins": 0,
+    "losses": 0,
+    "win_rate": 0,
+    "open_positions": 0
+  },
+  "positions": [],
+  "latest": [],
+  "trades": [],
+  "workflow": {
+    "repository": "",
+    "run_url": ""
+  }
+}
