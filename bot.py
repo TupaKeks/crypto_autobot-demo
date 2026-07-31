@@ -27,6 +27,9 @@ except ImportError:
     from binance_futures import BinanceFuturesBroker, LIVE_CONFIRMATION
 
 
+DEMO_TEST_CONFIRMATION = "DEMO_MARKET_TEST"
+
+
 @dataclasses.dataclass(frozen=True)
 class Candle:
     open_time: int
@@ -380,11 +383,11 @@ def evaluate_market_signal(
     if uptrend and candle.close > previous_high:
         if not volume_ok:
             return None, "", "volume filter on bullish breakout"
-        return "long", f"EMA trend + {lookback}h high breakout", "long signal"
+        return "long", f"EMA trend + {lookback}-bar high breakout", "long signal"
     if bool(strategy.get("allow_shorts", True)) and downtrend and candle.close < previous_low:
         if not volume_ok:
             return None, "", "volume filter on bearish breakout"
-        return "short", f"EMA trend + {lookback}h low breakout", "short signal"
+        return "short", f"EMA trend + {lookback}-bar low breakout", "short signal"
     return None, "", "no signal"
 
 
@@ -405,6 +408,8 @@ def can_trade(state: dict[str, Any], ctx: BotContext) -> tuple[bool, str]:
             return False, "Binance disconnected"
 
     daily = daily_stats(state, ctx)
+    if ctx.mode != "paper" and float(state.get("balance", 0.0)) <= 0:
+        return False, "Demo balance is zero; add virtual USDT first"
     if int(daily["trades"]) >= int(account["max_daily_trades"]):
         return False, "daily trade limit reached"
 
@@ -586,7 +591,10 @@ def refresh_exchange_account(ctx: BotContext, state: dict[str, Any]) -> None:
         ctx.exchange_snapshot = positions
         wallet_balance = float(summary["balance"])
         state["balance"] = wallet_balance
-        if not state.get("exchange_balance_initialized"):
+        if wallet_balance > 0 and (
+            not state.get("exchange_balance_initialized")
+            or float(state.get("initial_balance", 0.0)) <= 0
+        ):
             state["initial_balance"] = wallet_balance
             state["exchange_balance_initialized"] = True
         state["exchange_positions"] = positions
@@ -849,6 +857,73 @@ def scan_once(ctx: BotContext) -> dict[str, Any]:
         return {"status": "ok", "results": results, "state": public_state(ctx, state)}
 
 
+def open_demo_test_order(
+    ctx: BotContext,
+    symbol: str,
+    side: str,
+    confirmation: str,
+) -> dict[str, Any]:
+    if ctx.mode != "demo":
+        raise ValueError("Test order is available only in Binance Demo mode.")
+    if confirmation != DEMO_TEST_CONFIRMATION:
+        raise ValueError("Demo test order was not confirmed.")
+    if not ctx.orders_enabled or ctx.broker is None:
+        raise ValueError("Binance Demo orders are disabled.")
+
+    symbol = symbol.upper()
+    side = side.lower()
+    allowed_symbols = [str(item).upper() for item in ctx.config["market"]["symbols"]]
+    if symbol not in allowed_symbols:
+        raise ValueError("Choose a symbol from the active Demo profile.")
+    if side not in ("long", "short"):
+        raise ValueError("Side must be long or short.")
+
+    with ctx.lock:
+        ensure_trades_file(ctx)
+        state = ensure_state(ctx)
+        refresh_exchange_account(ctx, state)
+        if not state.get("broker_status", {}).get("connected"):
+            raise ValueError("Binance Demo is not connected.")
+        if float(state.get("broker_status", {}).get("available_balance", 0.0)) <= 0:
+            raise ValueError("Demo balance is zero. Add virtual USDT in Binance Demo first.")
+        if symbol in state.get("positions", {}) or symbol in state.get("exchange_positions", {}):
+            raise ValueError(f"{symbol} already has an open position.")
+
+        can_open, blocked_reason = can_trade(state, ctx)
+        if not can_open:
+            raise ValueError(blocked_reason)
+
+        market = ctx.config["market"]
+        candles = fetch_klines(
+            str(market["base_url"]),
+            symbol,
+            str(market["interval"]),
+            int(market["history_limit"]),
+        )
+        atr_values = atr(candles, int(ctx.config["strategy"]["atr_length"]))
+        if not candles or not atr_values or atr_values[-1] is None:
+            raise ValueError("Not enough closed candles to calculate a protected test order.")
+
+        candle = candles[-1]
+        open_position(
+            ctx,
+            state,
+            symbol,
+            side,
+            candle,
+            float(atr_values[-1]),
+            "manual Binance Demo market test",
+        )
+        state.setdefault("latest", {})[symbol] = {
+            "symbol": symbol,
+            "time": candle.open_dt,
+            "price": candle.close,
+            "status": f"manual Demo test opened {side}",
+        }
+        write_state(ctx, state)
+        return {"status": "ok", "state": public_state(ctx, state)}
+
+
 def worker_loop(controller: RuntimeController) -> None:
     while not controller.stop_event.is_set():
         ctx = controller.current()
@@ -921,6 +996,10 @@ def public_state(ctx: BotContext, state: dict[str, Any]) -> dict[str, Any]:
         "updated_at": state.get("updated_at"),
         "mode": ctx.mode,
         "orders_enabled": ctx.orders_enabled,
+        "market": {
+            "symbols": list(ctx.config.get("market", {}).get("symbols", [])),
+            "interval": ctx.config.get("market", {}).get("interval"),
+        },
         "broker_status": state.get("broker_status", {}),
         "stats": stats,
         "equity_now": round(float(state.get("balance", 0.0)) + open_pnl, 2),
@@ -979,6 +1058,7 @@ def dashboard_html(app_name: str) -> str:
       --line: #dfe4e8;
     }}
     * {{ box-sizing: border-box; }}
+    [hidden] {{ display: none !important; }}
     body {{
       margin: 0;
       background: var(--bg);
@@ -1097,6 +1177,10 @@ def dashboard_html(app_name: str) -> str:
     .modebtn.unavailable {{ border-style: dashed; }}
     .modebtn.live {{ color: var(--red); }}
     .modebtn.live.active {{ background: var(--red); color: white; border-color: var(--red); }}
+    .testcontrols {{ display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }}
+    .testcontrols select {{ min-height: 38px; padding: 8px 10px; border: 1px solid #cbd3dc; border-radius: 6px; background: white; }}
+    .longbtn {{ background: var(--green); }}
+    .shortbtn {{ background: var(--red); }}
     input {{
       min-height: 38px;
       border: 1px solid #cbd3dc;
@@ -1137,6 +1221,8 @@ def dashboard_html(app_name: str) -> str:
       .modecontrols {{ display: grid; grid-template-columns: repeat(3, 1fr); }}
       .modecontrols button {{ padding-inline: 8px; }}
       #controlToken {{ width: 100%; grid-column: 1 / -1; }}
+      .testcontrols {{ display: grid; grid-template-columns: 1fr 1fr; }}
+      .testcontrols select {{ grid-column: 1 / -1; width: 100%; }}
     }}
   </style>
 </head>
@@ -1164,6 +1250,18 @@ def dashboard_html(app_name: str) -> str:
       <button class="modebtn" data-mode="demo">Demo</button>
       <button class="modebtn live" data-mode="live">Live</button>
       <input id="controlToken" type="password" autocomplete="current-password" placeholder="Код управления" hidden>
+    </div>
+  </div>
+
+  <div class="controlbar" id="demoTestBar" hidden>
+    <div class="controlcopy">
+      <strong>Проверка рыночного ордера</strong>
+      <span class="muted" id="demoTestHint">Только Binance Demo. Бот сразу добавит стоп и тейк.</span>
+    </div>
+    <div class="testcontrols">
+      <select id="demoTestSymbol" aria-label="Торговая пара"></select>
+      <button class="longbtn" data-test-side="long">Test Long</button>
+      <button class="shortbtn" data-test-side="short">Test Short</button>
     </div>
   </div>
 
@@ -1243,6 +1341,13 @@ async function loadState() {{
   document.getElementById('brokerBadge').className = `badge ${{connected ? 'ok' : 'danger'}}`;
   document.getElementById('ordersBadge').textContent = `Ордера: ${{data.orders_enabled ? 'разрешены' : 'заблокированы'}}`;
   document.getElementById('ordersBadge').className = `badge ${{data.orders_enabled ? (data.mode === 'live' ? 'danger' : 'warn') : 'ok'}}`;
+  const demoTestBar = document.getElementById('demoTestBar');
+  demoTestBar.hidden = !(data.mode === 'demo' && connected && data.orders_enabled);
+  const symbolSelect = document.getElementById('demoTestSymbol');
+  const symbols = data.market?.symbols || [];
+  const selectedSymbol = symbolSelect.value;
+  symbolSelect.innerHTML = symbols.map(symbol => `<option value="${{esc(symbol)}}">${{esc(symbol)}}</option>`).join('');
+  if (symbols.includes(selectedSymbol)) symbolSelect.value = selectedSymbol;
   document.getElementById('equity').textContent = `$${{money(data.equity_now)}}`;
   document.getElementById('pnl').textContent = `$${{money(data.stats.realized_pnl)}}`;
   document.getElementById('pnl').className = `value ${{cls(data.stats.realized_pnl)}}`;
@@ -1349,6 +1454,35 @@ document.getElementById('scanBtn').addEventListener('click', async () => {{
   }}
 }});
 
+document.querySelectorAll('[data-test-side]').forEach(btn => {{
+  btn.addEventListener('click', async () => {{
+    const side = btn.dataset.testSide;
+    const symbol = document.getElementById('demoTestSymbol').value;
+    const hint = document.getElementById('demoTestHint');
+    if (!confirm(`Открыть тестовый ${{side.toUpperCase()}} по ${{symbol}} на Binance Demo?`)) return;
+    document.querySelectorAll('[data-test-side]').forEach(item => item.disabled = true);
+    hint.textContent = 'Отправляю рыночный Demo-ордер...';
+    try {{
+      const res = await fetch('/api/demo-test-order', {{
+        method: 'POST',
+        headers: {{
+          'Content-Type': 'application/json',
+          'X-Control-Token': document.getElementById('controlToken').value
+        }},
+        body: JSON.stringify({{symbol, side, confirmation: '{DEMO_TEST_CONFIRMATION}'}})
+      }});
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || 'Demo-ордер не был открыт');
+      hint.textContent = 'Demo-ордер открыт. Стоп и тейк выставлены.';
+      await loadState();
+    }} catch (error) {{
+      hint.textContent = error.message;
+    }} finally {{
+      document.querySelectorAll('[data-test-side]').forEach(item => item.disabled = false);
+    }}
+  }});
+}});
+
 loadState();
 setInterval(loadState, 10000);
 </script>
@@ -1442,6 +1576,30 @@ def make_handler(controller: RuntimeController) -> type[BaseHTTPRequestHandler]:
                     return
                 except Exception as exc:  # noqa: BLE001
                     send_json(self, {"error": f"Не удалось переключить режим: {exc}"}, status=500)
+                    return
+                send_json(self, payload)
+                return
+            if self.path == "/api/demo-test-order":
+                if not self.control_authorized():
+                    send_json(
+                        self,
+                        {"error": "Неверный код управления или действие разрешено только с этого компьютера."},
+                        status=401,
+                    )
+                    return
+                try:
+                    request = self.read_json()
+                    payload = open_demo_test_order(
+                        self.current_ctx(),
+                        str(request.get("symbol", "")),
+                        str(request.get("side", "")),
+                        str(request.get("confirmation", "")),
+                    )
+                except ValueError as exc:
+                    send_json(self, {"error": str(exc)}, status=409)
+                    return
+                except Exception as exc:  # noqa: BLE001
+                    send_json(self, {"error": f"Demo order failed: {exc}"}, status=500)
                     return
                 send_json(self, payload)
                 return

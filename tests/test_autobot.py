@@ -18,12 +18,14 @@ from crypto_autobot.binance_futures import (
 from crypto_autobot.bot import (
     BotContext,
     Candle,
+    DEMO_TEST_CONFIRMATION,
     RuntimeController,
     adx,
     build_context,
     ensure_state,
     ensure_trades_file,
     open_position,
+    open_demo_test_order,
     write_state,
 )
 
@@ -152,6 +154,95 @@ class BinanceMathTests(unittest.TestCase):
 
 
 class BotModeTests(unittest.TestCase):
+    def test_demo_test_order_is_blocked_outside_demo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = BotContext(
+                config=mode_config(tmp, "paper"),
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            with self.assertRaisesRegex(ValueError, "only in Binance Demo"):
+                open_demo_test_order(ctx, "BTCUSDT", "long", DEMO_TEST_CONFIRMATION)
+
+    def test_zero_demo_balance_does_not_become_initial_balance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=FakeBroker(),
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            state["balance"] = 0
+            state["initial_balance"] = 0
+            state["exchange_balance_initialized"] = True
+            with patch.object(ctx.broker, "account_summary", create=True, return_value={
+                "balance": 1000,
+                "available_balance": 1000,
+                "positions": [],
+                "environment": "demo",
+                "position_mode": "ONE_WAY",
+            }):
+                from crypto_autobot.bot import refresh_exchange_account
+                refresh_exchange_account(ctx, state)
+            self.assertEqual(state["initial_balance"], 1000)
+
+    def test_confirmed_demo_test_order_opens_a_protected_position(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["strategy"]["atr_length"] = 2
+            broker = FakeBroker()
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            candles = [
+                Candle(index, 99, 102, 98, 100, 10, index + 1)
+                for index in range(4)
+            ]
+            summary = {
+                "balance": 1000,
+                "available_balance": 1000,
+                "positions": [],
+                "environment": "demo",
+                "position_mode": "ONE_WAY",
+            }
+            with (
+                patch.object(broker, "account_summary", create=True, return_value=summary),
+                patch("crypto_autobot.bot.fetch_klines", return_value=candles),
+            ):
+                payload = open_demo_test_order(
+                    ctx,
+                    "BTCUSDT",
+                    "long",
+                    DEMO_TEST_CONFIRMATION,
+                )
+            self.assertEqual(payload["status"], "ok")
+            self.assertEqual(payload["state"]["positions"]["BTCUSDT"]["side"], "long")
+            self.assertEqual(payload["state"]["positions"]["BTCUSDT"]["reason"], "manual Binance Demo market test")
+
     def test_adx_detects_a_clean_trend(self):
         candles = [
             Candle(
