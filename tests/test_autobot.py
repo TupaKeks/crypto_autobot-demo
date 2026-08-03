@@ -517,8 +517,77 @@ class HealthSnapshotTests(unittest.TestCase):
             self.assertEqual(status, 200)
             self.assertEqual(payload["watchdog_age_seconds"], 2.0)
 
+    def test_active_watchdog_uses_its_start_time_for_health(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = self.make_context(tmp, mode="demo")
+            ctx.broker = FakeBroker()
+            ctx.orders_enabled = True
+            state = ensure_state(ctx)
+            state["runtime"].update({
+                "last_scan_completed_at": "2026-08-03T10:00:00+00:00",
+                "last_watchdog_completed_at": "2026-08-03T10:00:45+00:00",
+                "last_watchdog_started_at": "2026-08-03T10:00:58+00:00",
+                "watchdog_in_progress": True,
+            })
+            state["broker_status"] = {"connected": True}
+
+            payload, status = health_snapshot(
+                ctx,
+                state,
+                now=dt.datetime(2026, 8, 3, 10, 1, tzinfo=dt.timezone.utc),
+            )
+
+            self.assertEqual(status, 200)
+            self.assertEqual(payload["watchdog_age_seconds"], 2.0)
+
 
 class BotModeTests(unittest.TestCase):
+    def test_slow_account_refresh_does_not_block_protection_watchdog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            broker = FakeBroker()
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            refresh_started = threading.Event()
+            release_refresh = threading.Event()
+            original_summary = broker.account_summary
+
+            def selective_summary():
+                if threading.current_thread().name == "slow-scan":
+                    refresh_started.set()
+                    release_refresh.wait(1)
+                return original_summary()
+
+            broker.account_summary = selective_summary
+            with patch(
+                "crypto_autobot.bot.fetch_market_candles",
+                side_effect=TimeoutError("stop after account refresh"),
+            ):
+                scan_thread = threading.Thread(
+                    target=scan_once,
+                    args=(ctx,),
+                    name="slow-scan",
+                )
+                scan_thread.start()
+                self.assertTrue(refresh_started.wait(0.5))
+
+                watchdog = broker_watchdog_once(ctx)
+                self.assertEqual(watchdog["status"], "ok")
+
+                release_refresh.set()
+                scan_thread.join(2)
+                self.assertFalse(scan_thread.is_alive())
+
     def test_slow_market_fetch_does_not_block_protection_watchdog(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = mode_config(tmp, "demo")

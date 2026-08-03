@@ -889,6 +889,61 @@ def reconcile_pending_entry(
     return f"limit filled {pending['side']}"
 
 
+def apply_exchange_account_summary(
+    ctx: BotContext,
+    state: dict[str, Any],
+    summary: dict[str, Any],
+) -> None:
+    normalized = [normalize_broker_position(item) for item in summary["positions"]]
+    positions = {
+        str(item["symbol"]): item
+        for item in normalized
+        if str(item.get("symbol", "")).upper()
+    }
+    ctx.exchange_snapshot = positions
+    wallet_balance = float(summary["balance"])
+    state["balance"] = wallet_balance
+    if wallet_balance > 0 and (
+        not state.get("exchange_balance_initialized")
+        or float(state.get("initial_balance", 0.0)) <= 0
+    ):
+        state["initial_balance"] = wallet_balance
+        state["exchange_balance_initialized"] = True
+    state["exchange_positions"] = positions
+    state["broker_status"] = {
+        "mode": ctx.mode,
+        "provider": broker_provider(ctx),
+        "name": broker_name(ctx),
+        "connected": True,
+        "orders_enabled": ctx.orders_enabled,
+        "environment": summary["environment"],
+        "position_mode": summary["position_mode"],
+        "available_balance": float(summary["available_balance"]),
+        "message": "Connected",
+    }
+    state.pop("last_broker_error", None)
+
+
+def apply_exchange_account_error(
+    ctx: BotContext,
+    state: dict[str, Any],
+    exc: Exception,
+) -> None:
+    message = str(exc)
+    state["broker_status"] = {
+        "mode": ctx.mode,
+        "provider": broker_provider(ctx),
+        "name": broker_name(ctx),
+        "connected": False,
+        "orders_enabled": ctx.orders_enabled,
+        "message": message,
+    }
+    if state.get("last_broker_error") != message:
+        log_event(state, f"{broker_name(ctx)} connection error: {message}", ctx.timezone)
+        state["last_broker_error"] = message
+    ctx.exchange_snapshot = {}
+
+
 def refresh_exchange_account(ctx: BotContext, state: dict[str, Any]) -> None:
     if ctx.broker is None:
         state["broker_status"] = {
@@ -903,48 +958,9 @@ def refresh_exchange_account(ctx: BotContext, state: dict[str, Any]) -> None:
 
     try:
         summary = ctx.broker.account_summary()
-        normalized = [normalize_broker_position(item) for item in summary["positions"]]
-        positions = {
-            str(item["symbol"]): item
-            for item in normalized
-            if str(item.get("symbol", "")).upper()
-        }
-        ctx.exchange_snapshot = positions
-        wallet_balance = float(summary["balance"])
-        state["balance"] = wallet_balance
-        if wallet_balance > 0 and (
-            not state.get("exchange_balance_initialized")
-            or float(state.get("initial_balance", 0.0)) <= 0
-        ):
-            state["initial_balance"] = wallet_balance
-            state["exchange_balance_initialized"] = True
-        state["exchange_positions"] = positions
-        state["broker_status"] = {
-            "mode": ctx.mode,
-            "provider": broker_provider(ctx),
-            "name": broker_name(ctx),
-            "connected": True,
-            "orders_enabled": ctx.orders_enabled,
-            "environment": summary["environment"],
-            "position_mode": summary["position_mode"],
-            "available_balance": float(summary["available_balance"]),
-            "message": "Connected",
-        }
-        state.pop("last_broker_error", None)
+        apply_exchange_account_summary(ctx, state, summary)
     except Exception as exc:
-        message = str(exc)
-        state["broker_status"] = {
-            "mode": ctx.mode,
-            "provider": broker_provider(ctx),
-            "name": broker_name(ctx),
-            "connected": False,
-            "orders_enabled": ctx.orders_enabled,
-            "message": message,
-        }
-        if state.get("last_broker_error") != message:
-            log_event(state, f"{broker_name(ctx)} connection error: {message}", ctx.timezone)
-            state["last_broker_error"] = message
-        ctx.exchange_snapshot = {}
+        apply_exchange_account_error(ctx, state, exc)
 
 
 def record_exchange_close(
@@ -1317,7 +1333,23 @@ def scan_once(ctx: BotContext) -> dict[str, Any]:
         runtime["scan_in_progress"] = True
         runtime["last_scan_started_at"] = now_iso(ctx.timezone)
         write_state(ctx, state)
-        refresh_exchange_account(ctx, state)
+
+    account_summary: dict[str, Any] | None = None
+    account_error: Exception | None = None
+    if ctx.broker is not None:
+        try:
+            account_summary = ctx.broker.account_summary()
+        except Exception as exc:  # noqa: BLE001
+            account_error = exc
+
+    with ctx.lock:
+        state = ensure_state(ctx)
+        if ctx.broker is None:
+            refresh_exchange_account(ctx, state)
+        elif account_error is not None:
+            apply_exchange_account_error(ctx, state, account_error)
+        elif account_summary is not None:
+            apply_exchange_account_summary(ctx, state, account_summary)
         write_state(ctx, state)
 
     results: list[dict[str, Any]] = []
@@ -1784,7 +1816,11 @@ def health_snapshot(
     stale = heartbeat_age is None or heartbeat_age > stale_after
     watchdog_required = ctx.broker is not None and ctx.orders_enabled
     watchdog_age: float | None = None
-    watchdog_text = runtime.get("last_watchdog_completed_at") or runtime.get("last_watchdog_started_at")
+    watchdog_text = (
+        runtime.get("last_watchdog_started_at")
+        if runtime.get("watchdog_in_progress")
+        else runtime.get("last_watchdog_completed_at") or runtime.get("last_watchdog_started_at")
+    )
     if watchdog_text:
         try:
             watchdog_time = dt.datetime.fromisoformat(str(watchdog_text))
