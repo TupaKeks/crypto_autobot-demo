@@ -7,7 +7,7 @@
     "connected": false,
     "environment": "demo",
     "position_mode": null,
-    "message": "Waiting for first workflow run"
+    "message": "GitHub Actions is CI only. Trading requires a continuous Mac or European VPS runtime."
   },
   "stats": {
     "return_percent": 0,
@@ -20,8 +20,14 @@
   "positions": [],
   "latest": [],
   "trades": [],
+  "diagnostics": [
+    {
+      "time": null,
+      "message": "No trading process runs on GitHub Pages; no API credentials are used by CI."
+    }
+  ],
   "workflow": {
-    "repository": "",
-    "run_url": ""
+    "repository": "TupaKeks/crypto_autobot-demo",
+    "run_url": "https://github.com/TupaKeks/crypto_autobot-demo/actions"
   }
 }

@@ -1,10 +1,9 @@
-name: Crypto Autobot Demo
+name: Crypto Autobot CI
 
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: "3,18,33,48 * * * *"
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -13,11 +12,11 @@ permissions:
   id-token: write
 
 concurrency:
-  group: crypto-autobot-demo
-  cancel-in-progress: false
+  group: crypto-autobot-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  scan:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout bot
@@ -33,111 +32,32 @@ jobs:
       - name: Install strategy dependencies
         run: python3 -m pip install -r crypto_autobot/requirements-ml.txt
 
-      - name: Check required secrets
-        env:
-          BINANCE_DEMO_API_KEY: ${{ secrets.BINANCE_DEMO_API_KEY }}
-          BINANCE_DEMO_API_SECRET: ${{ secrets.BINANCE_DEMO_API_SECRET }}
-          STATE_ENCRYPTION_PASSWORD: ${{ secrets.STATE_ENCRYPTION_PASSWORD }}
-        run: |
-          test -n "$BINANCE_DEMO_API_KEY" || { echo "Missing BINANCE_DEMO_API_KEY"; exit 1; }
-          test -n "$BINANCE_DEMO_API_SECRET" || { echo "Missing BINANCE_DEMO_API_SECRET"; exit 1; }
-          test -n "$STATE_ENCRYPTION_PASSWORD" || { echo "Missing STATE_ENCRYPTION_PASSWORD"; exit 1; }
-
-      - name: Restore encrypted bot state
-        uses: actions/cache@v4
-        with:
-          path: crypto_autobot/.runtime/demo-state.tar.gz.enc
-          key: crypto-autobot-demo-state-${{ github.run_id }}
-          restore-keys: |
-            crypto-autobot-demo-state-
-
-      - name: Decrypt previous state
-        env:
-          STATE_ENCRYPTION_PASSWORD: ${{ secrets.STATE_ENCRYPTION_PASSWORD }}
-        run: |
-          if [ -f crypto_autobot/.runtime/demo-state.tar.gz.enc ]; then
-            openssl enc -d -aes-256-cbc -pbkdf2 \
-              -in crypto_autobot/.runtime/demo-state.tar.gz.enc \
-              -pass env:STATE_ENCRYPTION_PASSWORD \
-              | tar -xz -C crypto_autobot
-          fi
-
       - name: Run tests
         run: python3 -m unittest discover -s crypto_autobot/tests -v
 
-      - name: Verify Binance Demo readiness without orders
-        env:
-          BINANCE_DEMO_API_KEY: ${{ secrets.BINANCE_DEMO_API_KEY }}
-          BINANCE_DEMO_API_SECRET: ${{ secrets.BINANCE_DEMO_API_SECRET }}
+      - name: Compile runtime
         run: |
-          set +e
-          python3 crypto_autobot/bot.py \
-            --config crypto_autobot/config.demo.asymmetric-15m.example.json \
-            --check > /tmp/binance-readiness.json
-          check_status=$?
-          set -e
-          python3 - "$check_status" <<'PY'
-          import json
-          import sys
-
-          status = int(sys.argv[1])
-          with open("/tmp/binance-readiness.json", encoding="utf-8") as handle:
-              result = json.load(handle)
-          symbols = result.get("symbols", [])
-          ready_symbols = sum(bool(item.get("ready")) for item in symbols)
-          print(
-              "Binance Demo readiness: "
-              f"ready={bool(result.get('ready'))}, "
-              f"environment={result.get('environment')}, "
-              f"symbols={ready_symbols}/{len(symbols)}, "
-              f"orders_sent={result.get('orders_sent')}"
-          )
-          if status or not result.get("ready") or result.get("orders_sent") != 0:
-              raise SystemExit(1)
-          PY
-
-      - name: Scan Binance Demo
-        env:
-          BINANCE_DEMO_API_KEY: ${{ secrets.BINANCE_DEMO_API_KEY }}
-          BINANCE_DEMO_API_SECRET: ${{ secrets.BINANCE_DEMO_API_SECRET }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python3 crypto_autobot/github_runner.py \
-            --config crypto_autobot/config.demo.asymmetric-15m.example.json \
-            --output crypto_autobot/github_pages/state.json
-
-      - name: Encrypt current bot state
-        if: always()
-        env:
-          STATE_ENCRYPTION_PASSWORD: ${{ secrets.STATE_ENCRYPTION_PASSWORD }}
-        run: |
-          mkdir -p crypto_autobot/.runtime crypto_autobot/data/asymmetric_15m_demo
-          touch crypto_autobot/data/asymmetric_15m_demo/trades_demo.csv
-          if [ -f crypto_autobot/data/asymmetric_15m_demo/state_demo.json ]; then
-            tar -czf - -C crypto_autobot \
-              data/asymmetric_15m_demo/state_demo.json \
-              data/asymmetric_15m_demo/trades_demo.csv \
-              | openssl enc -aes-256-cbc -salt -pbkdf2 \
-                  -out crypto_autobot/.runtime/demo-state.tar.gz.enc \
-                  -pass env:STATE_ENCRYPTION_PASSWORD
-          fi
+          PYTHONPYCACHEPREFIX=/tmp/crypto-autobot-pycache \
+            python3 -m py_compile crypto_autobot/*.py
 
       - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
-      - name: Upload dashboard
+      - name: Upload static status page
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4
         with:
           path: crypto_autobot/github_pages
 
   deploy:
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: scan
+    needs: test
     steps:
-      - name: Deploy dashboard
+      - name: Deploy static status page
         id: deployment
         uses: actions/deploy-pages@v4
