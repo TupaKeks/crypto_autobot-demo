@@ -813,6 +813,58 @@ class BotModeTests(unittest.TestCase):
             self.assertEqual(state["positions"]["BTCUSDT"]["target"], 105.8)
             self.assertEqual(len(broker.activation_calls), 1)
 
+    def test_watchdog_position_snapshot_skips_full_account_refresh(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            broker = FakeBroker()
+            broker.account_summary = lambda: (_ for _ in ()).throw(
+                AssertionError("watchdog must not run the full account refresh")
+            )
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+
+            result = broker_watchdog_once(ctx)
+
+            self.assertEqual(result["status"], "ok")
+            self.assertTrue(ensure_state(ctx)["broker_status"]["connected"])
+
+    def test_watchdog_position_snapshot_failure_is_degraded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            broker = FakeBroker()
+            broker.get_open_positions = lambda: (_ for _ in ()).throw(
+                TimeoutError("position snapshot timeout")
+            )
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+
+            result = broker_watchdog_once(ctx)
+            state = ensure_state(ctx)
+
+            self.assertEqual(result["status"], "degraded")
+            self.assertFalse(state["broker_status"]["connected"])
+            self.assertEqual(state["runtime"]["last_watchdog_errors"], 1)
+
     def test_watchdog_emergency_closes_a_position_missing_protection(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = mode_config(tmp, "demo")

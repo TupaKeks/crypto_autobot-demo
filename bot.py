@@ -1519,7 +1519,50 @@ def broker_watchdog_once(ctx: BotContext) -> dict[str, Any]:
         runtime = state.setdefault("runtime", {})
         runtime["watchdog_in_progress"] = True
         runtime["last_watchdog_started_at"] = now_iso(ctx.timezone)
-        refresh_exchange_account(ctx, state)
+        write_state(ctx, state)
+
+    try:
+        normalized = [
+            normalize_broker_position(item)
+            for item in ctx.broker.get_open_positions()
+        ]
+        exchange_positions = {
+            str(item["symbol"]): item
+            for item in normalized
+            if str(item.get("symbol", "")).upper()
+        }
+    except Exception as exc:  # noqa: BLE001
+        with ctx.lock:
+            state = ensure_state(ctx)
+            apply_exchange_account_error(ctx, state, exc)
+            runtime = state.setdefault("runtime", {})
+            runtime["watchdog_in_progress"] = False
+            runtime["last_watchdog_completed_at"] = now_iso(ctx.timezone)
+            runtime["last_watchdog_errors"] = 1
+            runtime["last_watchdog_error"] = str(exc)
+            write_state(ctx, state)
+        return {
+            "status": "degraded",
+            "checked_pending": 0,
+            "checked_positions": 0,
+            "errors": 1,
+        }
+
+    with ctx.lock:
+        state = ensure_state(ctx)
+        ctx.exchange_snapshot = exchange_positions
+        state["exchange_positions"] = exchange_positions
+        broker_status = state.setdefault("broker_status", {})
+        broker_status.update({
+            "mode": ctx.mode,
+            "provider": broker_provider(ctx),
+            "name": broker_name(ctx),
+            "connected": True,
+            "orders_enabled": ctx.orders_enabled,
+            "message": "Connected",
+        })
+        state.pop("last_broker_error", None)
+        runtime = state.setdefault("runtime", {})
         checked_pending = 0
         checked_positions = 0
         errors = 0
