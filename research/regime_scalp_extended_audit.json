@@ -1,0 +1,69 @@
+{
+  "status": "demo_candidate_not_live",
+  "strategy": "intraday_regime_pullback",
+  "timeframe": "15m",
+  "symbols": 10,
+  "execution_assumptions": {
+    "entry": "post-only limit retrace 0.1 ATR",
+    "maker_entry_fee_bps": 2.0,
+    "taker_exit_fee_bps": 5.0,
+    "exit_slippage_bps": 2.0,
+    "same_candle_exit": "stop_first"
+  },
+  "validation_270d": {
+    "trades": 990,
+    "trades_per_day": 3.67,
+    "win_rate_percent": 44.55,
+    "profit_factor": 1.064,
+    "average_realized_r": 0.0366,
+    "return_percent": 5.32,
+    "max_drawdown_percent": 6.08,
+    "profitable_30d_windows": "5 of 9"
+  },
+  "final_holdout_60d": {
+    "trades": 232,
+    "trades_per_day": 3.87,
+    "win_rate_percent": 53.88,
+    "profit_factor": 1.41,
+    "average_realized_r": 0.1964,
+    "return_percent": 7.02,
+    "max_drawdown_percent": 2.35,
+    "profitable_30d_windows": "1 of 2",
+    "second_30d_profit_factor": 0.973
+  },
+  "rejected": {
+    "rolling_32_symbol_universe": {
+      "validation_profit_factor": 0.839,
+      "validation_return_percent": -16.9,
+      "reason": "failed extended sequential validation"
+    },
+    "forced_frequency_variants": {
+      "target_trades_per_day": "4.0-5.5",
+      "best_profit_factor": 0.986,
+      "reason": "extra signals had negative expectancy after costs"
+    },
+    "liquidity_sweep_variants": {
+      "best_profit_factor": 0.755,
+      "reason": "single and two-candle variants failed validation"
+    },
+    "hourly_return_predictability": {
+      "validation_trades_per_day": 6.02,
+      "best_profit_factor": 0.563,
+      "reason": "frequency target reached, but the walk-forward model lost money after market costs"
+    },
+    "shorter_holding_and_entry_variants": {
+      "highest_profitable_frequency_per_day": 3.91,
+      "profit_factor_at_highest_profitable_frequency": 1.016,
+      "reason": "higher frequency removed the thin edge; original one-bar 0.1 ATR limit remained strongest"
+    },
+    "linear_ml_walk_forward": {
+      "validation_trades_per_day": 1.59,
+      "validation_profit_factor": 1.062,
+      "final_holdout_trades_per_day": 1.03,
+      "final_holdout_profit_factor": 0.581,
+      "final_holdout_return_percent": -2.46,
+      "reason": "the preselected model failed its one-time final 60-day holdout"
+    }
+  },
+  "warning": "Historical results do not guarantee future profit. Collect Binance Demo evidence before Live."
+}

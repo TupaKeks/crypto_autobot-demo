@@ -1,0 +1,168 @@
+{
+  "method": {
+    "training_days": 90,
+    "relationship_selection": "fit first 45d, require positive edge on next 45d, refit full 90d",
+    "rebalance_days": 30,
+    "entry": "target UTC hour open, using only earlier closed hours from the same UTC day",
+    "exit": "1 ATR stop, 2 ATR target, or target hour close",
+    "costs_bps": {
+      "market_fee_each_side": 5.0,
+      "slippage_each_side": 2.0
+    },
+    "limits": {
+      "max_per_hour": 3,
+      "max_per_day": 6
+    },
+    "symbols": [
+      "AAVEUSDT",
+      "ADAUSDT",
+      "APTUSDT",
+      "CRVUSDT",
+      "ETHUSDT",
+      "FILUSDT",
+      "NEARUSDT",
+      "RENDERUSDT",
+      "TAOUSDT",
+      "XLMUSDT"
+    ]
+  },
+  "dates": {
+    "validation_start": "2025-09-06T19:45:00+00:00",
+    "holdout_start": "2026-06-03T19:45:00+00:00",
+    "holdout_end": "2026-08-02T19:45:00+00:00"
+  },
+  "validation_grid_270d": [
+    {
+      "min_prediction": 0.0002,
+      "min_eval_win_rate": 0.5,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 39.79,
+      "profit_factor": 0.555,
+      "average_realized_r": -0.1237,
+      "return_percent": -26.09,
+      "max_drawdown_percent": 26.09
+    },
+    {
+      "min_prediction": 0.0004,
+      "min_eval_win_rate": 0.5,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 39.11,
+      "profit_factor": 0.551,
+      "average_realized_r": -0.1258,
+      "return_percent": -26.47,
+      "max_drawdown_percent": 26.47
+    },
+    {
+      "min_prediction": 0.0006,
+      "min_eval_win_rate": 0.5,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 40.28,
+      "profit_factor": 0.559,
+      "average_realized_r": -0.1205,
+      "return_percent": -25.52,
+      "max_drawdown_percent": 25.99
+    },
+    {
+      "min_prediction": 0.0008,
+      "min_eval_win_rate": 0.5,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 39.42,
+      "profit_factor": 0.538,
+      "average_realized_r": -0.1284,
+      "return_percent": -26.93,
+      "max_drawdown_percent": 27.04
+    },
+    {
+      "min_prediction": 0.0002,
+      "min_eval_win_rate": 0.53,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 38.07,
+      "profit_factor": 0.49,
+      "average_realized_r": -0.1457,
+      "return_percent": -29.95,
+      "max_drawdown_percent": 29.97
+    },
+    {
+      "min_prediction": 0.0004,
+      "min_eval_win_rate": 0.53,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 38.56,
+      "profit_factor": 0.508,
+      "average_realized_r": -0.1408,
+      "return_percent": -29.1,
+      "max_drawdown_percent": 29.1
+    },
+    {
+      "min_prediction": 0.0006,
+      "min_eval_win_rate": 0.53,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 39.98,
+      "profit_factor": 0.517,
+      "average_realized_r": -0.1348,
+      "return_percent": -28.07,
+      "max_drawdown_percent": 28.15
+    },
+    {
+      "min_prediction": 0.0008,
+      "min_eval_win_rate": 0.53,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 40.41,
+      "profit_factor": 0.563,
+      "average_realized_r": -0.1202,
+      "return_percent": -25.46,
+      "max_drawdown_percent": 25.46
+    },
+    {
+      "min_prediction": 0.0002,
+      "min_eval_win_rate": 0.56,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 36.72,
+      "profit_factor": 0.517,
+      "average_realized_r": -0.1398,
+      "return_percent": -28.93,
+      "max_drawdown_percent": 28.93
+    },
+    {
+      "min_prediction": 0.0004,
+      "min_eval_win_rate": 0.56,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 37.21,
+      "profit_factor": 0.502,
+      "average_realized_r": -0.1435,
+      "return_percent": -29.57,
+      "max_drawdown_percent": 29.57
+    },
+    {
+      "min_prediction": 0.0006,
+      "min_eval_win_rate": 0.56,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 40.77,
+      "profit_factor": 0.56,
+      "average_realized_r": -0.125,
+      "return_percent": -26.32,
+      "max_drawdown_percent": 26.37
+    },
+    {
+      "min_prediction": 0.0008,
+      "min_eval_win_rate": 0.56,
+      "trades": 1626,
+      "trades_per_day": 6.02,
+      "win_rate": 40.59,
+      "profit_factor": 0.539,
+      "average_realized_r": -0.1311,
+      "return_percent": -27.41,
+      "max_drawdown_percent": 27.5
+    }
+  ]
+}

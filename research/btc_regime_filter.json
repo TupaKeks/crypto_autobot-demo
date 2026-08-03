@@ -1,0 +1,227 @@
+{
+  "method": {
+    "description": "BTC trend gate applies only to long signals; shorts stay unchanged",
+    "selection_period": "270 days",
+    "final_holdout_days": 60,
+    "holdout_used_in_selection": false,
+    "generated_at": "2026-08-02T23:07:09+00:00"
+  },
+  "candidates": [
+    {
+      "name": "no_filter",
+      "validation": {
+        "trades": 1273,
+        "trades_per_day": 4.71,
+        "win_rate": 45.64,
+        "profit_factor": 1.065,
+        "average_realized_r": 0.0369,
+        "return_percent": 6.9,
+        "max_drawdown_percent": 9.7
+      },
+      "validation_stress_maker4_slippage3": {
+        "trades": 1273,
+        "trades_per_day": 4.71,
+        "win_rate": 44.85,
+        "profit_factor": 0.989,
+        "average_realized_r": -0.0044,
+        "return_percent": -1.21,
+        "max_drawdown_percent": 10.68
+      },
+      "profitable_months": 5
+    },
+    {
+      "name": "short_only",
+      "validation": {
+        "trades": 736,
+        "trades_per_day": 2.73,
+        "win_rate": 49.73,
+        "profit_factor": 1.228,
+        "average_realized_r": 0.1167,
+        "return_percent": 13.48,
+        "max_drawdown_percent": 6.33
+      },
+      "validation_stress_maker4_slippage3": {
+        "trades": 736,
+        "trades_per_day": 2.73,
+        "win_rate": 48.91,
+        "profit_factor": 1.151,
+        "average_realized_r": 0.0807,
+        "return_percent": 9.07,
+        "max_drawdown_percent": 6.99
+      },
+      "profitable_months": 7
+    },
+    {
+      "name": "long_btc_above_ema144",
+      "validation": {
+        "trades": 1146,
+        "trades_per_day": 4.24,
+        "win_rate": 45.72,
+        "profit_factor": 1.063,
+        "average_realized_r": 0.0362,
+        "return_percent": 6.05,
+        "max_drawdown_percent": 9.2
+      },
+      "validation_stress_maker4_slippage3": {
+        "trades": 1146,
+        "trades_per_day": 4.24,
+        "win_rate": 44.94,
+        "profit_factor": 0.984,
+        "average_realized_r": -0.0068,
+        "return_percent": -1.5,
+        "max_drawdown_percent": 10.11
+      },
+      "profitable_months": 5
+    },
+    {
+      "name": "long_btc_regime_aligned",
+      "validation": {
+        "trades": 1135,
+        "trades_per_day": 4.2,
+        "win_rate": 45.99,
+        "profit_factor": 1.073,
+        "average_realized_r": 0.0417,
+        "return_percent": 6.99,
+        "max_drawdown_percent": 9.26
+      },
+      "validation_stress_maker4_slippage3": {
+        "trades": 1135,
+        "trades_per_day": 4.2,
+        "win_rate": 45.2,
+        "profit_factor": 0.994,
+        "average_realized_r": -0.0015,
+        "return_percent": -0.59,
+        "max_drawdown_percent": 10.17
+      },
+      "profitable_months": 5
+    },
+    {
+      "name": "long_btc_entries_and_regime_aligned",
+      "validation": {
+        "trades": 901,
+        "trades_per_day": 3.34,
+        "win_rate": 47.06,
+        "profit_factor": 1.117,
+        "average_realized_r": 0.0636,
+        "return_percent": 8.66,
+        "max_drawdown_percent": 7.85
+      },
+      "validation_stress_maker4_slippage3": {
+        "trades": 901,
+        "trades_per_day": 3.34,
+        "win_rate": 46.06,
+        "profit_factor": 1.03,
+        "average_realized_r": 0.0185,
+        "return_percent": 2.24,
+        "max_drawdown_percent": 9.04
+      },
+      "profitable_months": 5
+    },
+    {
+      "name": "long_btc_positive_24h",
+      "validation": {
+        "trades": 1164,
+        "trades_per_day": 4.31,
+        "win_rate": 45.53,
+        "profit_factor": 1.057,
+        "average_realized_r": 0.0335,
+        "return_percent": 5.66,
+        "max_drawdown_percent": 9.08
+      },
+      "validation_stress_maker4_slippage3": {
+        "trades": 1164,
+        "trades_per_day": 4.31,
+        "win_rate": 45.02,
+        "profit_factor": 0.992,
+        "average_realized_r": -0.0024,
+        "return_percent": -0.76,
+        "max_drawdown_percent": 9.96
+      },
+      "profitable_months": 5
+    },
+    {
+      "name": "long_btc_regime_and_positive_24h",
+      "validation": {
+        "trades": 1108,
+        "trades_per_day": 4.1,
+        "win_rate": 45.76,
+        "profit_factor": 1.068,
+        "average_realized_r": 0.0391,
+        "return_percent": 6.36,
+        "max_drawdown_percent": 8.89
+      },
+      "validation_stress_maker4_slippage3": {
+        "trades": 1109,
+        "trades_per_day": 4.11,
+        "win_rate": 45.18,
+        "profit_factor": 1.0,
+        "average_realized_r": 0.0018,
+        "return_percent": -0.03,
+        "max_drawdown_percent": 9.76
+      },
+      "profitable_months": 5
+    }
+  ],
+  "selected": {
+    "name": "short_only",
+    "validation": {
+      "trades": 736,
+      "trades_per_day": 2.73,
+      "win_rate": 49.73,
+      "profit_factor": 1.228,
+      "average_realized_r": 0.1167,
+      "return_percent": 13.48,
+      "max_drawdown_percent": 6.33
+    },
+    "validation_stress_maker4_slippage3": {
+      "trades": 736,
+      "trades_per_day": 2.73,
+      "win_rate": 48.91,
+      "profit_factor": 1.151,
+      "average_realized_r": 0.0807,
+      "return_percent": 9.07,
+      "max_drawdown_percent": 6.99
+    },
+    "profitable_months": 7
+  },
+  "final_holdout_once": {
+    "trades": 161,
+    "trades_per_day": 2.68,
+    "win_rate": 52.17,
+    "profit_factor": 1.266,
+    "average_realized_r": 0.1266,
+    "return_percent": 3.06,
+    "max_drawdown_percent": 2.4
+  },
+  "final_holdout_stress_maker4_slippage3": {
+    "trades": 161,
+    "trades_per_day": 2.68,
+    "win_rate": 49.69,
+    "profit_factor": 1.182,
+    "average_realized_r": 0.0903,
+    "return_percent": 2.16,
+    "max_drawdown_percent": 2.89
+  },
+  "holdout_months": [
+    {
+      "start_utc": "2026-06-03T19:45:00+00:00",
+      "end_utc": "2026-07-03T19:45:00+00:00",
+      "trades": 93,
+      "trades_per_day": 3.1,
+      "win_rate": 54.84,
+      "profit_factor": 1.374,
+      "average_realized_r": 0.1685,
+      "net_pnl": 235.09
+    },
+    {
+      "start_utc": "2026-07-03T19:45:00+00:00",
+      "end_utc": "2026-08-02T19:45:00+00:00",
+      "trades": 68,
+      "trades_per_day": 2.27,
+      "win_rate": 48.53,
+      "profit_factor": 1.136,
+      "average_realized_r": 0.0693,
+      "net_pnl": 70.95
+    }
+  ]
+}

@@ -2,27 +2,22 @@
 
 ## 1. Как работает бот
 
-Каждую минуту бот проверяет, появилась ли новая закрытая четырёхчасовая свеча по
-BTCUSDT, ETHUSDT и SOLUSDT. Решение принимается только по закрытым свечам.
+Бот каждые 15 секунд проверяет, появилась ли новая закрытая 15-минутная свеча на одной
+из 10 выбранных USDT-пар. Решение принимается только по закрытым свечам.
 
-Long-сигнал:
-
-- EMA20 выше EMA100;
-- цена выше EMA100;
-- свеча закрылась выше максимума предыдущих 30 четырёхчасовых свечей;
-- объём свечи выше среднего;
-- ADX подтверждает наличие достаточно сильного тренда;
-- волатильность ATR находится в допустимом диапазоне.
-
-Short работает зеркально. Размер позиции рассчитывается так, чтобы при Stop Loss
-потеря составила не больше заданного процента баланса.
+Short-сигнал появляется, когда EMA48 ниже EMA144, медленная EMA наклонена вниз,
+цена откатила к EMA21, RSI вернулся ниже 55, а подтверждающая свеча, ADX, объём
+и ATR прошли фильтры. Long работает зеркально. Поскольку Long оказался слабее
+на истории, его риск ограничен `0.025%` баланса против `0.15%` для Short.
+Stop Loss равен `1.8 ATR`, Take Profit `2.8 ATR`, номинальный RR `1:1.56`.
 
 В Demo/Live бот:
 
 1. Проверяет Binance, One-Way Mode, доступный USDT-баланс и лимит позиций.
 2. Устанавливает isolated margin и заданное плечо.
-3. Отправляет рыночный вход.
-4. Сразу размещает на Binance биржевые Stop Loss и Take Profit.
+3. Ставит post-only лимитный вход на откате `0.1 ATR` и отменяет его через одну свечу.
+4. После заполнения сразу ставит `STOP_MARKET closePosition` и post-only
+   `LIMIT reduceOnly` Take Profit.
 5. Если защитные ордера не удалось поставить, отправляет аварийное закрытие.
 6. Каждый цикл проверяет, что оба защитных ордера всё ещё существуют. Если один
    исчез, закрывает позицию аварийным рыночным ордером.
@@ -38,8 +33,10 @@ Stop Loss и Take Profit находятся на Binance, поэтому ост�
 
 ```bash
 cd "/Users/maksympiatachenko/Documents/Трейдинг"
-python3 crypto_autobot/bot.py \
-  --config crypto_autobot/config.example.json \
+python3 -m venv crypto_autobot/.venv
+crypto_autobot/.venv/bin/python -m pip install -r crypto_autobot/requirements.txt
+crypto_autobot/.venv/bin/python crypto_autobot/bot.py \
+  --config crypto_autobot/config.paper.asymmetric-15m.example.json \
   --once
 ```
 
@@ -49,8 +46,8 @@ python3 crypto_autobot/bot.py \
 Запусти постоянный Paper-режим:
 
 ```bash
-python3 crypto_autobot/bot.py \
-  --config crypto_autobot/config.example.json
+crypto_autobot/.venv/bin/python crypto_autobot/bot.py \
+  --config crypto_autobot/config.paper.asymmetric-15m.example.json
 ```
 
 Не закрывай это окно Terminal. Открой в браузере:
@@ -58,6 +55,10 @@ python3 crypto_autobot/bot.py \
 ```text
 http://127.0.0.1:8090
 ```
+
+Бейдж `Цикл #...: OK` означает, что сканирование действительно завершалось
+недавно. Адрес `http://127.0.0.1:8090/health` дополнительно показывает возраст
+heartbeat, число ошибок последнего цикла и количество последовательных сбоев.
 
 Остановить бота: вернись в Terminal и нажми `Control + C`.
 
@@ -87,8 +88,8 @@ export BINANCE_DEMO_API_SECRET="ВСТАВЬ_DEMO_SECRET"
 
 ```bash
 cd "/Users/maksympiatachenko/Documents/Трейдинг"
-python3 crypto_autobot/bot.py \
-  --config crypto_autobot/config.demo.example.json \
+crypto_autobot/.venv/bin/python crypto_autobot/bot.py \
+  --config crypto_autobot/config.demo.asymmetric-15m.example.json \
   --check
 ```
 
@@ -105,8 +106,8 @@ python3 crypto_autobot/bot.py \
 После успешной проверки:
 
 ```bash
-python3 crypto_autobot/bot.py \
-  --config crypto_autobot/config.demo.example.json \
+crypto_autobot/.venv/bin/python crypto_autobot/bot.py \
+  --config crypto_autobot/config.demo.asymmetric-15m.example.json \
   --enable-orders
 ```
 
@@ -121,26 +122,65 @@ crypto_autobot/data/state_demo.json
 crypto_autobot/data/trades_demo.csv
 ```
 
-### Быстрый Demo-профиль для проверки сделки
+### Внутридневной Demo-профиль
 
 Этот профиль работает по закрытым 15-минутным свечам, проверяет рынок каждые
-30 секунд и держит не больше одной позиции одновременно:
+15 секунд и держит не больше четырёх позиций или ожидающих заявок одновременно.
+
+Самый простой запуск на Mac: дважды нажми файл
+`crypto_autobot/start_asymmetric_demo.command`. Введи Demo key и скрытый secret;
+скрипт сначала проверит подключение без ордеров, затем запустит бота.
 
 ```bash
-caffeinate -i python3 crypto_autobot/bot.py \
-  --config crypto_autobot/config.demo.scalp.example.json \
+caffeinate -i crypto_autobot/.venv/bin/python crypto_autobot/bot.py \
+  --config crypto_autobot/config.demo.asymmetric-15m.example.json \
   --enable-orders
 ```
+
+После сигнала бот ставит post-only лимитную заявку на откате `0.1 ATR`. Если
+цена не вернулась к заявке в течение следующей 15-минутной свечи, заявка
+отменяется. После заполнения бот сразу добавляет рыночный защитный Stop Loss и
+reduce-only лимитный Take Profit. Оба ордера проверяются каждый цикл; при пропаже
+любого из них бот отправляет аварийное закрытие.
+
+За исполненными входами следит отдельный watchdog с интервалом 2 секунды. Он не
+рассчитывает новые сигналы и не меняет логику стратегии: его задача только быстро
+активировать SL/TP и закрыть позицию, если защита исчезла. В Demo/Live endpoint
+`/health` становится `degraded`, если watchdog перестал обновляться.
+
+После обрыва сети, сна или остановки поставщика котировок бот не использует старый
+сигнал: если закрытая свеча старше двух активных таймфреймов, новый вход блокируется
+со статусом `stale market data` до восстановления свежей истории.
+
+### Автозапуск на Mac без открытого Terminal
+
+Дважды нажми `crypto_autobot/install_macos_demo_service.command`, введи Demo key
+и скрытый secret. Установщик сначала выполнит безопасную проверку подключения без
+ордера: баланс, One-Way Mode, доступность всех пар, объём истории и свежесть
+последней свечи. Только после успешной проверки он сохранит ключи в macOS Keychain и
+запустит сервис через `launchd`.
+
+Сервис автоматически запускается после входа в macOS и перезапускается после
+сбоя. Логи находятся в `~/Library/Application Support/CryptoAutobot/crypto_autobot/data/launchd`.
+Остановить и удалить
+автозапуск можно файлом `crypto_autobot/uninstall_macos_demo_service.command`.
+Ключи при удалении сервиса остаются в Keychain, чтобы случайно не потерять их.
+
+Это не заменяет удаленный сервер: выключенный Mac и MacBook с закрытой крышкой
+торговать не будут. `caffeinate` защищает только от обычного сна при открытой крышке.
 
 В интерфейсе появится блок `Проверка рыночного ордера`. Выбери пару и нажми
 `Test Long` или `Test Short`. После подтверждения бот отправит небольшой MARKET
 ордер только на Binance Demo и сразу добавит Stop Loss и Take Profit. Кнопка
 заблокирована в Paper и Live.
 
-Перед проверкой добавь виртуальные USDT в кошелек Binance Futures Demo. Этот
-профиль нужен для проверки исполнения и сбора статистики. Он не считается
-готовой прибыльной стратегией: тест на 30 днях с комиссией и проскальзыванием
-был немного отрицательным.
+Перед проверкой добавь виртуальные USDT в кошелек Binance Futures Demo. На
+270-дневном validation профиль дал `4.72` сделки/день, win rate `45.60%`,
+`PF 1.179`; при повышенных расходах `PF 1.106`. Подтверждающие следующие 60 дней:
+`4.77` сделки/день, win rate `50.35%`, `PF 1.237`; стресс `PF 1.156`. Точный
+RR `1:2` не выбран, потому что его validation win rate был ниже `45%`, а PF хуже.
+Live остаётся запрещён до длительной Demo-проверки. Полный отчёт лежит в
+`crypto_autobot/research/asymmetric_risk_audit.json`.
 
 Ручные Binance-позиции помечаются в панели звёздочкой. Бот показывает их, но не
 управляет ими.
@@ -162,7 +202,7 @@ caffeinate -i python3 crypto_autobot/bot.py \
 export BINANCE_DEMO_API_KEY="ВСТАВЬ_DEMO_API_KEY"
 export BINANCE_DEMO_API_SECRET="ВСТАВЬ_DEMO_SECRET"
 python3 crypto_autobot/bot.py \
-  --config crypto_autobot/config.example.json \
+  --config crypto_autobot/config.paper.asymmetric-15m.example.json \
   --enable-orders
 ```
 
@@ -204,16 +244,18 @@ export TELEGRAM_CHAT_ID="ТВОЙ_CHAT_ID"
 
 ```bash
 cd "/Users/maksympiatachenko/Documents/Трейдинг"
-python3 crypto_autobot/backtest.py \
-  --config crypto_autobot/config.example.json \
-  --days 365
+python3 crypto_autobot/portfolio_backtest.py \
+  --config crypto_autobot/config.paper.asymmetric-15m.example.json \
+  --days 240 \
+  --test-days 60
 ```
 
-В расчёт включены комиссия `5 bps` на каждую сторону и проскальзывание `2 bps`
-на каждый ордер. Итоговый отчёт:
+В расчёт включены maker-комиссия `2 bps` для post-only входа и лимитного тейка,
+taker-комиссия `5 bps` и проскальзывание `2 bps` для стопа и выхода по времени.
+Итоговый отчёт:
 
 ```text
-crypto_autobot/data/backtest_report.json
+crypto_autobot/data/walkforward_report.json
 ```
 
 Смотри не только на доходность, но и на число сделок, максимальную просадку и
@@ -222,12 +264,13 @@ crypto_autobot/data/backtest_report.json
 
 ## 7. Бесплатный запуск через GitHub
 
-Это вариант без банковской карты и без постоянно включённого Mac. GitHub Actions
-будит бота в `:17` и `:47` каждого часа, бот делает один проход по закрытым 4h
-свечам, а Stop Loss и Take Profit после входа остаются на Binance Demo.
+Это read-only вариант без банковской карты и без постоянно включённого Mac. GitHub Actions
+проверяет 15m-профиль в `:03`, `:18`, `:33` и `:48` каждого часа и обновляет панель.
 
 Это не настоящий непрерывный сервер: запуск по расписанию иногда задерживается.
-Поэтому GitHub-вариант оставлен только для Binance Demo и не поддерживает Live.
+Ордера через GitHub намеренно заблокированы: одноразовый процесс может завершиться до
+заполнения лимитной заявки, и тогда стоп не будет поставлен сразу. Для Demo-торговли нужен
+непрерывный процесс на Mac или VPS.
 
 ### Шаг 1. Установи GitHub Desktop
 
@@ -276,16 +319,10 @@ TELEGRAM_BOT_TOKEN
 TELEGRAM_CHAT_ID
 ```
 
-### Шаг 4. Оставь ордера выключенными
+### Шаг 4. Ордера остаются выключенными
 
-В том же разделе открой вкладку `Variables` и создай `Repository variable`:
-
-```text
-Name: DEMO_ORDERS_ENABLED
-Value: false
-```
-
-Так первый запуск только проверит Demo-подключение и сигналы.
+Дополнительная GitHub-переменная для ордеров больше не нужна. Workflow всегда запускается без
+`--enable-orders`.
 
 ### Шаг 5. Включи Pages и сделай первый запуск
 
@@ -299,18 +336,10 @@ Value: false
 Ссылка на панель появится в завершённой задаче `deploy` и в `Settings` → `Pages`.
 Панель read-only: в ней нет переключения режимов, баланса и размера позиции.
 
-### Шаг 6. Разреши Demo-ордера
+### Шаг 6. Запусти Demo-торговлю отдельно
 
-Сначала убедись, что панель показывает `Binance Demo подключён`. Затем вернись в
-`Settings` → `Secrets and variables` → `Actions` → `Variables`, открой
-`DEMO_ORDERS_ENABLED`, поменяй значение на:
-
-```text
-true
-```
-
-Снова вручную запусти workflow. После этого панель должна показать
-`Demo-ордера включены`. Все сделки остаются виртуальными на Binance Demo.
+Когда GitHub-панель покажет `Binance Demo подключён`, запусти непрерывный Demo-процесс через
+`start_asymmetric_demo.command` на Mac. GitHub при этом можно оставить как read-only панель.
 
 ### Ограничения бесплатного варианта
 
@@ -326,6 +355,30 @@ true
   отдельные Binance Demo-ключи, а не ключи основного аккаунта.
 - Этот workflow нельзя переводить на Live. Для реальных средств нужен постоянный
   сервер, мониторинг и отдельная длительная проверка Demo.
+
+### Постоянный VPS через Docker
+
+Для европейского VPS подготовлен `compose.demo.yml`. Он перезапускает Demo-бота
+после сбоя или перезагрузки сервера и сохраняет статистику в `data/`. Перед
+запуском задай ключи только в текущем окружении или защищенном хранилище сервера:
+
+```bash
+export BINANCE_DEMO_API_KEY="ТВОЙ_DEMO_KEY"
+export BINANCE_DEMO_API_SECRET="ТВОЙ_DEMO_SECRET"
+export DASHBOARD_CONTROL_TOKEN="ДЛИННЫЙ_СЛУЧАЙНЫЙ_ПАРОЛЬ"
+docker compose -f crypto_autobot/compose.demo.yml up -d --build
+```
+
+Порт панели привязан к `127.0.0.1` сервера и не выставлен открыто в интернет.
+Открывай его через SSH-туннель:
+
+```bash
+ssh -L 8090:127.0.0.1:8090 user@SERVER_IP
+```
+
+После этого панель доступна локально по `http://127.0.0.1:8090`. Бесплатные
+web-сервисы Render и Koyeb засыпают без входящего трафика, поэтому для безопасной
+непрерывной торговли они не подходят. GitHub Actions остается только монитором.
 
 ## 8. Подключение основного Binance
 
@@ -390,16 +443,17 @@ python3 /home/ubuntu/crypto_autobot/bot.py \
 
 ## 9. Ограничения риска по умолчанию
 
-Paper/Demo:
+Asymmetric 15m Paper/Demo:
 
-- риск на сделку: 0.5%;
-- максимум открытых позиций: 3;
-- максимум новых сделок в день: 6;
-- остановка после дневного убытка 2%;
+- риск Short: 0.15%;
+- риск Long: 0.025%;
+- максимум открытых позиций или ожидающих заявок: 4;
+- максимум новых сделок в день: 12;
+- остановка после дневного убытка 1.2%;
 - isolated margin;
 - плечо 2x;
-- Stop Loss: 2 ATR;
-- Take Profit: 3 ATR.
+- Stop Loss: 1.8 ATR;
+- Take Profit: 2.8 ATR.
 
 Live-пример:
 
@@ -427,14 +481,74 @@ Live-пример:
 `Invalid API-Key (-2015)` — обычно ключ от другой среды, нет Futures-разрешения или
 IP сервера отсутствует в whitelist.
 
-## 11. Важные файлы
+## 11. Подключение MT5 Demo
+
+Перед переходом к другому брокеру через MT5 нужно заново проверить стратегию на его котировках,
+спреде, комиссии, swap и минимальном лоте. Текущие Binance-цифры нельзя переносить на MT5.
+
+Адаптер `mt5_broker.py` уже подключён к общему торговому контуру и умеет:
+
+- подключаться к локальному MT5-терминалу через официальный Python-модуль;
+- получать закрытые свечи напрямую из терминала MT5, а не с Binance;
+- рассчитывать lot по стоимости стопа у брокера;
+- ставить market и limit-заявки с прикреплёнными SL/TP;
+- отказываться от сделки, если минимальный lot превысит заданный риск.
+
+MT5-профиль запускается отдельно, а его статистика сохраняется в
+`state_mt5_demo.json` и `trades_mt5_demo.csv`. Сначала открой Demo-счёт у
+конкретного MT5-брокера и в `config.mt5-demo.asymmetric-15m.example.json` замени
+`symbol_map` на точные названия криптосимволов этого брокера.
+
+Логин, пароль и сервер не записываются в JSON. Перед запуском задай их в окружении:
+
+```bash
+export MT5_LOGIN="НОМЕР_DEMO_СЧЁТА"
+export MT5_PASSWORD="ПАРОЛЬ_DEMO_СЧЁТА"
+export MT5_SERVER="ТОЧНОЕ_ИМЯ_DEMO_СЕРВЕРА"
+```
+
+На Windows-машине с установленным и запущенным терминалом MT5 сначала проверь
+подключение без ордеров:
+
+```bash
+python -m pip install -r crypto_autobot/requirements-mt5.txt
+python crypto_autobot/bot.py \
+  --config crypto_autobot/config.mt5-demo.asymmetric-15m.example.json \
+  --check
+```
+
+И только после успешной проверки запусти Demo-ордера:
+
+```bash
+python crypto_autobot/bot.py \
+  --config crypto_autobot/config.mt5-demo.asymmetric-15m.example.json \
+  --enable-orders
+```
+
+Для постоянного запуска на Mac дважды нажми `install_macos_demo_service.command`.
+Установщик сначала проверит Demo-доступ без заявки, сохранит ключи в macOS Keychain,
+а затем установит рабочую копию в `~/Library/Application Support/CryptoAutobot`.
+Это нужно потому, что фоновым службам macOS может быть запрещён доступ к проектам внутри
+`Documents`. Demo-статистика фоновой службы хранится внутри этой рабочей копии.
+
+По официальной схеме MetaQuotes Python-модуль подключается к работающему терминалу через
+[`initialize`](https://www.mql5.com/en/docs/python_metatrader5/mt5initialize_py), а заявки отправляются через
+[`order_send`](https://www.mql5.com/en/docs/python_metatrader5/mt5ordersend_py). История закрытых баров читается через
+[`copy_rates_from_pos`](https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesfrompos_py): позиция `0` является
+текущим формирующимся баром, поэтому бот начинает с позиции `1`.
+Конкретный MT5 Demo нельзя считать проверенным, пока не выбран брокер и не сделан
+маленький защищённый тестовый ордер на его сервере.
+
+## 12. Важные файлы
 
 ```text
 bot.py                         основной процесс и веб-панель
 binance_futures.py             подключение к Binance
+mt5_broker.py                  рабочий адаптер MT5
 backtest.py                    историческая проверка стратегии
-config.example.json            Paper
-config.demo.example.json       Binance Demo
+config.paper.asymmetric-15m.example.json  Paper 15m
+config.demo.asymmetric-15m.example.json   Binance Demo 15m
+config.mt5-demo.asymmetric-15m.example.json  MT5 Demo 15m
 config.live.example.json       Live с безопасными ограничениями
 data/state_*.json              текущее состояние
 data/trades_*.csv              журнал сделок

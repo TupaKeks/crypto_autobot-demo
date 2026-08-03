@@ -3,10 +3,21 @@ from __future__ import annotations
 import json
 import unittest
 
-from crypto_autobot.github_runner import contains_private_keys, sanitize_public_state
+from crypto_autobot.github_runner import (
+    contains_private_keys,
+    sanitize_public_state,
+    validate_one_shot_order_safety,
+)
 
 
 class GitHubRunnerTests(unittest.TestCase):
+    def test_one_shot_runner_rejects_waiting_limit_entries(self):
+        config = {"strategy": {"entry_order_type": "limit_retrace"}}
+
+        with self.assertRaisesRegex(ValueError, "cannot safely leave a limit entry"):
+            validate_one_shot_order_safety(config, True)
+        validate_one_shot_order_safety(config, False)
+
     def sample_state(self) -> dict:
         return {
             "updated_at": "2026-07-31T12:00:00+02:00",

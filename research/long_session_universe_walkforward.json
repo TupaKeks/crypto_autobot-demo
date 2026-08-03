@@ -1,0 +1,2616 @@
+{
+  "method": {
+    "description": "120d development, 250d validation, sealed 60d holdout",
+    "short_component": "frozen 10-symbol baseline",
+    "long_component": "broad UTC session plus development-ranked symbols",
+    "risk": "0.15% on both sides",
+    "generated_at": "2026-08-03T08:46:19+00:00"
+  },
+  "rankings": {
+    "all": [
+      {
+        "symbol": "ATOMUSDT",
+        "score": 0.276295,
+        "trades": 22,
+        "win_rate": 68.18,
+        "total_r": 11.6044
+      },
+      {
+        "symbol": "SOLUSDT",
+        "score": 0.236923,
+        "trades": 23,
+        "win_rate": 60.87,
+        "total_r": 10.1877
+      },
+      {
+        "symbol": "DOGEUSDT",
+        "score": 0.195894,
+        "trades": 27,
+        "win_rate": 59.26,
+        "total_r": 9.207
+      },
+      {
+        "symbol": "SUIUSDT",
+        "score": 0.13609,
+        "trades": 22,
+        "win_rate": 54.55,
+        "total_r": 5.7158
+      },
+      {
+        "symbol": "TRXUSDT",
+        "score": 0.121889,
+        "trades": 27,
+        "win_rate": 55.56,
+        "total_r": 5.7288
+      },
+      {
+        "symbol": "1000SHIBUSDT",
+        "score": 0.118934,
+        "trades": 36,
+        "win_rate": 52.78,
+        "total_r": 6.6603
+      },
+      {
+        "symbol": "RENDERUSDT",
+        "score": 0.115932,
+        "trades": 30,
+        "win_rate": 53.33,
+        "total_r": 5.7966
+      },
+      {
+        "symbol": "DOTUSDT",
+        "score": 0.088862,
+        "trades": 19,
+        "win_rate": 52.63,
+        "total_r": 3.4656
+      },
+      {
+        "symbol": "LINKUSDT",
+        "score": 0.085107,
+        "trades": 26,
+        "win_rate": 46.15,
+        "total_r": 3.9149
+      },
+      {
+        "symbol": "ADAUSDT",
+        "score": 0.079873,
+        "trades": 21,
+        "win_rate": 47.62,
+        "total_r": 3.2748
+      },
+      {
+        "symbol": "AAVEUSDT",
+        "score": 0.014168,
+        "trades": 18,
+        "win_rate": 50.0,
+        "total_r": 0.5384
+      },
+      {
+        "symbol": "RUNEUSDT",
+        "score": -0.022924,
+        "trades": 18,
+        "win_rate": 50.0,
+        "total_r": -0.8711
+      },
+      {
+        "symbol": "OPUSDT",
+        "score": -0.030135,
+        "trades": 29,
+        "win_rate": 41.38,
+        "total_r": -1.4766
+      },
+      {
+        "symbol": "ICPUSDT",
+        "score": -0.032924,
+        "trades": 22,
+        "win_rate": 40.91,
+        "total_r": -1.3828
+      },
+      {
+        "symbol": "XRPUSDT",
+        "score": -0.04062,
+        "trades": 34,
+        "win_rate": 44.12,
+        "total_r": -2.1935
+      },
+      {
+        "symbol": "NEARUSDT",
+        "score": -0.058991,
+        "trades": 25,
+        "win_rate": 36.0,
+        "total_r": -2.6546
+      },
+      {
+        "symbol": "XLMUSDT",
+        "score": -0.059346,
+        "trades": 21,
+        "win_rate": 38.1,
+        "total_r": -2.4332
+      },
+      {
+        "symbol": "ARBUSDT",
+        "score": -0.061967,
+        "trades": 25,
+        "win_rate": 40.0,
+        "total_r": -2.7885
+      },
+      {
+        "symbol": "WIFUSDT",
+        "score": -0.071598,
+        "trades": 20,
+        "win_rate": 35.0,
+        "total_r": -2.8639
+      },
+      {
+        "symbol": "AVAXUSDT",
+        "score": -0.076824,
+        "trades": 30,
+        "win_rate": 43.33,
+        "total_r": -3.8412
+      },
+      {
+        "symbol": "BCHUSDT",
+        "score": -0.094555,
+        "trades": 35,
+        "win_rate": 37.14,
+        "total_r": -5.2005
+      },
+      {
+        "symbol": "CRVUSDT",
+        "score": -0.133495,
+        "trades": 19,
+        "win_rate": 31.58,
+        "total_r": -5.2063
+      },
+      {
+        "symbol": "INJUSDT",
+        "score": -0.133952,
+        "trades": 32,
+        "win_rate": 40.62,
+        "total_r": -6.9655
+      },
+      {
+        "symbol": "ETHUSDT",
+        "score": -0.156807,
+        "trades": 21,
+        "win_rate": 38.1,
+        "total_r": -6.4291
+      },
+      {
+        "symbol": "BNBUSDT",
+        "score": -0.164494,
+        "trades": 31,
+        "win_rate": 32.26,
+        "total_r": -8.3892
+      },
+      {
+        "symbol": "ETCUSDT",
+        "score": -0.164702,
+        "trades": 20,
+        "win_rate": 30.0,
+        "total_r": -6.5881
+      },
+      {
+        "symbol": "UNIUSDT",
+        "score": -0.208126,
+        "trades": 26,
+        "win_rate": 26.92,
+        "total_r": -9.5738
+      },
+      {
+        "symbol": "APTUSDT",
+        "score": -0.217745,
+        "trades": 24,
+        "win_rate": 29.17,
+        "total_r": -9.5808
+      },
+      {
+        "symbol": "TAOUSDT",
+        "score": -0.260415,
+        "trades": 28,
+        "win_rate": 21.43,
+        "total_r": -12.4999
+      },
+      {
+        "symbol": "FILUSDT",
+        "score": -0.267998,
+        "trades": 27,
+        "win_rate": 25.93,
+        "total_r": -12.5959
+      },
+      {
+        "symbol": "BTCUSDT",
+        "score": -0.301918,
+        "trades": 25,
+        "win_rate": 28.0,
+        "total_r": -13.5863
+      },
+      {
+        "symbol": "LTCUSDT",
+        "score": -0.308384,
+        "trades": 24,
+        "win_rate": 16.67,
+        "total_r": -13.5689
+      }
+    ],
+    "asia_00_08": [
+      {
+        "symbol": "ATOMUSDT",
+        "score": 0.214361,
+        "trades": 11,
+        "win_rate": 72.73,
+        "total_r": 6.6452
+      },
+      {
+        "symbol": "1000SHIBUSDT",
+        "score": 0.1938,
+        "trades": 14,
+        "win_rate": 64.29,
+        "total_r": 6.5892
+      },
+      {
+        "symbol": "SUIUSDT",
+        "score": 0.16,
+        "trades": 17,
+        "win_rate": 58.82,
+        "total_r": 5.92
+      },
+      {
+        "symbol": "NEARUSDT",
+        "score": 0.06903,
+        "trades": 10,
+        "win_rate": 50.0,
+        "total_r": 2.0709
+      },
+      {
+        "symbol": "DOGEUSDT",
+        "score": 0.05577,
+        "trades": 10,
+        "win_rate": 50.0,
+        "total_r": 1.6731
+      },
+      {
+        "symbol": "BCHUSDT",
+        "score": 0.04645,
+        "trades": 16,
+        "win_rate": 50.0,
+        "total_r": 1.6722
+      },
+      {
+        "symbol": "ICPUSDT",
+        "score": 0.043674,
+        "trades": 11,
+        "win_rate": 45.45,
+        "total_r": 1.3539
+      },
+      {
+        "symbol": "LINKUSDT",
+        "score": 0.004621,
+        "trades": 13,
+        "win_rate": 38.46,
+        "total_r": 0.1525
+      },
+      {
+        "symbol": "RENDERUSDT",
+        "score": -0.000838,
+        "trades": 14,
+        "win_rate": 42.86,
+        "total_r": -0.0285
+      },
+      {
+        "symbol": "XRPUSDT",
+        "score": -0.035069,
+        "trades": 12,
+        "win_rate": 41.67,
+        "total_r": -1.1222
+      },
+      {
+        "symbol": "ARBUSDT",
+        "score": -0.044273,
+        "trades": 13,
+        "win_rate": 38.46,
+        "total_r": -1.461
+      },
+      {
+        "symbol": "AVAXUSDT",
+        "score": -0.075874,
+        "trades": 11,
+        "win_rate": 45.45,
+        "total_r": -2.3521
+      },
+      {
+        "symbol": "OPUSDT",
+        "score": -0.101966,
+        "trades": 12,
+        "win_rate": 33.33,
+        "total_r": -3.2629
+      },
+      {
+        "symbol": "FILUSDT",
+        "score": -0.141129,
+        "trades": 11,
+        "win_rate": 27.27,
+        "total_r": -4.375
+      },
+      {
+        "symbol": "TAOUSDT",
+        "score": -0.152931,
+        "trades": 12,
+        "win_rate": 25.0,
+        "total_r": -4.8938
+      },
+      {
+        "symbol": "INJUSDT",
+        "score": -0.164579,
+        "trades": 14,
+        "win_rate": 35.71,
+        "total_r": -5.5957
+      },
+      {
+        "symbol": "BNBUSDT",
+        "score": -0.170403,
+        "trades": 11,
+        "win_rate": 27.27,
+        "total_r": -5.2825
+      },
+      {
+        "symbol": "CRVUSDT",
+        "score": -0.224042,
+        "trades": 11,
+        "win_rate": 18.18,
+        "total_r": -6.9453
+      },
+      {
+        "symbol": "XLMUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 25.0,
+        "total_r": -3.4194
+      },
+      {
+        "symbol": "WIFUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 25.0,
+        "total_r": -2.2509
+      },
+      {
+        "symbol": "UNIUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 25.0,
+        "total_r": -4.9415
+      },
+      {
+        "symbol": "TRXUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 0.0,
+        "total_r": -6.2575
+      },
+      {
+        "symbol": "SOLUSDT",
+        "score": -999.0,
+        "trades": 9,
+        "win_rate": 66.67,
+        "total_r": 5.3589
+      },
+      {
+        "symbol": "RUNEUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 50.0,
+        "total_r": 1.3087
+      },
+      {
+        "symbol": "LTCUSDT",
+        "score": -999.0,
+        "trades": 7,
+        "win_rate": 0.0,
+        "total_r": -6.697
+      },
+      {
+        "symbol": "ETHUSDT",
+        "score": -999.0,
+        "trades": 9,
+        "win_rate": 33.33,
+        "total_r": -2.9777
+      },
+      {
+        "symbol": "ETCUSDT",
+        "score": -999.0,
+        "trades": 7,
+        "win_rate": 28.57,
+        "total_r": -1.3598
+      },
+      {
+        "symbol": "DOTUSDT",
+        "score": -999.0,
+        "trades": 9,
+        "win_rate": 77.78,
+        "total_r": 7.9569
+      },
+      {
+        "symbol": "BTCUSDT",
+        "score": -999.0,
+        "trades": 9,
+        "win_rate": 33.33,
+        "total_r": -3.5956
+      },
+      {
+        "symbol": "APTUSDT",
+        "score": -999.0,
+        "trades": 9,
+        "win_rate": 55.56,
+        "total_r": 1.5767
+      },
+      {
+        "symbol": "ADAUSDT",
+        "score": -999.0,
+        "trades": 9,
+        "win_rate": 66.67,
+        "total_r": 5.7381
+      },
+      {
+        "symbol": "AAVEUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 33.33,
+        "total_r": -1.3631
+      }
+    ],
+    "europe_08_16": [
+      {
+        "symbol": "TRXUSDT",
+        "score": 0.248027,
+        "trades": 17,
+        "win_rate": 70.59,
+        "total_r": 9.177
+      },
+      {
+        "symbol": "RENDERUSDT",
+        "score": 0.135261,
+        "trades": 11,
+        "win_rate": 63.64,
+        "total_r": 4.1931
+      },
+      {
+        "symbol": "DOGEUSDT",
+        "score": 0.123062,
+        "trades": 12,
+        "win_rate": 58.33,
+        "total_r": 3.938
+      },
+      {
+        "symbol": "OPUSDT",
+        "score": 0.034365,
+        "trades": 11,
+        "win_rate": 45.45,
+        "total_r": 1.0653
+      },
+      {
+        "symbol": "1000SHIBUSDT",
+        "score": -0.030742,
+        "trades": 16,
+        "win_rate": 37.5,
+        "total_r": -1.1067
+      },
+      {
+        "symbol": "LTCUSDT",
+        "score": -0.067194,
+        "trades": 11,
+        "win_rate": 36.36,
+        "total_r": -2.083
+      },
+      {
+        "symbol": "INJUSDT",
+        "score": -0.08212,
+        "trades": 15,
+        "win_rate": 40.0,
+        "total_r": -2.8742
+      },
+      {
+        "symbol": "AVAXUSDT",
+        "score": -0.08989,
+        "trades": 10,
+        "win_rate": 30.0,
+        "total_r": -2.6967
+      },
+      {
+        "symbol": "NEARUSDT",
+        "score": -0.098277,
+        "trades": 11,
+        "win_rate": 27.27,
+        "total_r": -3.0466
+      },
+      {
+        "symbol": "UNIUSDT",
+        "score": -0.110818,
+        "trades": 14,
+        "win_rate": 28.57,
+        "total_r": -3.7678
+      },
+      {
+        "symbol": "BNBUSDT",
+        "score": -0.123253,
+        "trades": 12,
+        "win_rate": 33.33,
+        "total_r": -3.9441
+      },
+      {
+        "symbol": "XRPUSDT",
+        "score": -0.133172,
+        "trades": 12,
+        "win_rate": 33.33,
+        "total_r": -4.2615
+      },
+      {
+        "symbol": "RUNEUSDT",
+        "score": -0.1543,
+        "trades": 10,
+        "win_rate": 40.0,
+        "total_r": -4.629
+      },
+      {
+        "symbol": "BCHUSDT",
+        "score": -0.193615,
+        "trades": 13,
+        "win_rate": 23.08,
+        "total_r": -6.3893
+      },
+      {
+        "symbol": "FILUSDT",
+        "score": -0.201747,
+        "trades": 12,
+        "win_rate": 25.0,
+        "total_r": -6.4559
+      },
+      {
+        "symbol": "BTCUSDT",
+        "score": -0.230894,
+        "trades": 11,
+        "win_rate": 27.27,
+        "total_r": -7.1577
+      },
+      {
+        "symbol": "APTUSDT",
+        "score": -0.306226,
+        "trades": 11,
+        "win_rate": 9.09,
+        "total_r": -9.493
+      },
+      {
+        "symbol": "XLMUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 40.0,
+        "total_r": 0.2785
+      },
+      {
+        "symbol": "WIFUSDT",
+        "score": -999.0,
+        "trades": 7,
+        "win_rate": 42.86,
+        "total_r": -0.935
+      },
+      {
+        "symbol": "TAOUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 16.67,
+        "total_r": -3.8632
+      },
+      {
+        "symbol": "SUIUSDT",
+        "score": -999.0,
+        "trades": 1,
+        "win_rate": 100.0,
+        "total_r": 1.499
+      },
+      {
+        "symbol": "SOLUSDT",
+        "score": -999.0,
+        "trades": 7,
+        "win_rate": 71.43,
+        "total_r": 5.4333
+      },
+      {
+        "symbol": "LINKUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 62.5,
+        "total_r": 4.2218
+      },
+      {
+        "symbol": "ICPUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 40.0,
+        "total_r": -1.4158
+      },
+      {
+        "symbol": "ETHUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 25.0,
+        "total_r": -5.3157
+      },
+      {
+        "symbol": "ETCUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 37.5,
+        "total_r": -2.5499
+      },
+      {
+        "symbol": "DOTUSDT",
+        "score": -999.0,
+        "trades": 4,
+        "win_rate": 25.0,
+        "total_r": -3.1895
+      },
+      {
+        "symbol": "CRVUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 20.0,
+        "total_r": -2.835
+      },
+      {
+        "symbol": "ATOMUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 66.67,
+        "total_r": 3.7631
+      },
+      {
+        "symbol": "ARBUSDT",
+        "score": -999.0,
+        "trades": 9,
+        "win_rate": 55.56,
+        "total_r": 1.8456
+      },
+      {
+        "symbol": "ADAUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 25.0,
+        "total_r": -2.4586
+      },
+      {
+        "symbol": "AAVEUSDT",
+        "score": -999.0,
+        "trades": 7,
+        "win_rate": 71.43,
+        "total_r": 3.06
+      }
+    ],
+    "us_16_24": [
+      {
+        "symbol": "XRPUSDT",
+        "score": 0.10634,
+        "trades": 10,
+        "win_rate": 60.0,
+        "total_r": 3.1902
+      },
+      {
+        "symbol": "TAOUSDT",
+        "score": -0.124763,
+        "trades": 10,
+        "win_rate": 20.0,
+        "total_r": -3.7429
+      },
+      {
+        "symbol": "XLMUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 50.0,
+        "total_r": 0.7077
+      },
+      {
+        "symbol": "WIFUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 40.0,
+        "total_r": 0.322
+      },
+      {
+        "symbol": "UNIUSDT",
+        "score": -999.0,
+        "trades": 4,
+        "win_rate": 25.0,
+        "total_r": -0.8645
+      },
+      {
+        "symbol": "TRXUSDT",
+        "score": -999.0,
+        "trades": 4,
+        "win_rate": 75.0,
+        "total_r": 2.8093
+      },
+      {
+        "symbol": "SUIUSDT",
+        "score": -999.0,
+        "trades": 4,
+        "win_rate": 25.0,
+        "total_r": -1.7032
+      },
+      {
+        "symbol": "SOLUSDT",
+        "score": -999.0,
+        "trades": 7,
+        "win_rate": 42.86,
+        "total_r": -0.6045
+      },
+      {
+        "symbol": "RUNEUSDT",
+        "score": -999.0,
+        "trades": 2,
+        "win_rate": 100.0,
+        "total_r": 2.4492
+      },
+      {
+        "symbol": "RENDERUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 60.0,
+        "total_r": 1.632
+      },
+      {
+        "symbol": "OPUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 50.0,
+        "total_r": 0.721
+      },
+      {
+        "symbol": "NEARUSDT",
+        "score": -999.0,
+        "trades": 4,
+        "win_rate": 25.0,
+        "total_r": -1.6789
+      },
+      {
+        "symbol": "LTCUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 0.0,
+        "total_r": -4.7889
+      },
+      {
+        "symbol": "LINKUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 40.0,
+        "total_r": -0.4594
+      },
+      {
+        "symbol": "INJUSDT",
+        "score": -999.0,
+        "trades": 3,
+        "win_rate": 66.67,
+        "total_r": 1.5044
+      },
+      {
+        "symbol": "ICPUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 33.33,
+        "total_r": -1.3209
+      },
+      {
+        "symbol": "FILUSDT",
+        "score": -999.0,
+        "trades": 4,
+        "win_rate": 25.0,
+        "total_r": -1.765
+      },
+      {
+        "symbol": "ETHUSDT",
+        "score": -999.0,
+        "trades": 4,
+        "win_rate": 75.0,
+        "total_r": 1.8643
+      },
+      {
+        "symbol": "ETCUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 20.0,
+        "total_r": -2.6784
+      },
+      {
+        "symbol": "DOTUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 33.33,
+        "total_r": -1.3018
+      },
+      {
+        "symbol": "DOGEUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 80.0,
+        "total_r": 3.5959
+      },
+      {
+        "symbol": "CRVUSDT",
+        "score": -999.0,
+        "trades": 3,
+        "win_rate": 100.0,
+        "total_r": 4.574
+      },
+      {
+        "symbol": "BTCUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 20.0,
+        "total_r": -2.833
+      },
+      {
+        "symbol": "BNBUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 37.5,
+        "total_r": 0.8374
+      },
+      {
+        "symbol": "BCHUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 33.33,
+        "total_r": -0.4834
+      },
+      {
+        "symbol": "AVAXUSDT",
+        "score": -999.0,
+        "trades": 9,
+        "win_rate": 55.56,
+        "total_r": 1.2076
+      },
+      {
+        "symbol": "ATOMUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 60.0,
+        "total_r": 1.1961
+      },
+      {
+        "symbol": "ARBUSDT",
+        "score": -999.0,
+        "trades": 3,
+        "win_rate": 0.0,
+        "total_r": -3.1731
+      },
+      {
+        "symbol": "APTUSDT",
+        "score": -999.0,
+        "trades": 4,
+        "win_rate": 25.0,
+        "total_r": -1.6645
+      },
+      {
+        "symbol": "ADAUSDT",
+        "score": -999.0,
+        "trades": 4,
+        "win_rate": 50.0,
+        "total_r": -0.0047
+      },
+      {
+        "symbol": "AAVEUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 40.0,
+        "total_r": -1.1585
+      },
+      {
+        "symbol": "1000SHIBUSDT",
+        "score": -999.0,
+        "trades": 6,
+        "win_rate": 66.67,
+        "total_r": 1.1778
+      }
+    ],
+    "europe_us_08_24": [
+      {
+        "symbol": "TRXUSDT",
+        "score": 0.292349,
+        "trades": 21,
+        "win_rate": 71.43,
+        "total_r": 11.9863
+      },
+      {
+        "symbol": "DOGEUSDT",
+        "score": 0.203619,
+        "trades": 17,
+        "win_rate": 64.71,
+        "total_r": 7.5339
+      },
+      {
+        "symbol": "RENDERUSDT",
+        "score": 0.161808,
+        "trades": 16,
+        "win_rate": 62.5,
+        "total_r": 5.8251
+      },
+      {
+        "symbol": "ATOMUSDT",
+        "score": 0.159974,
+        "trades": 11,
+        "win_rate": 63.64,
+        "total_r": 4.9592
+      },
+      {
+        "symbol": "SOLUSDT",
+        "score": 0.142024,
+        "trades": 14,
+        "win_rate": 57.14,
+        "total_r": 4.8288
+      },
+      {
+        "symbol": "LINKUSDT",
+        "score": 0.114012,
+        "trades": 13,
+        "win_rate": 53.85,
+        "total_r": 3.7624
+      },
+      {
+        "symbol": "AAVEUSDT",
+        "score": 0.059422,
+        "trades": 12,
+        "win_rate": 58.33,
+        "total_r": 1.9015
+      },
+      {
+        "symbol": "OPUSDT",
+        "score": 0.048278,
+        "trades": 17,
+        "win_rate": 47.06,
+        "total_r": 1.7863
+      },
+      {
+        "symbol": "XLMUSDT",
+        "score": 0.029885,
+        "trades": 13,
+        "win_rate": 46.15,
+        "total_r": 0.9862
+      },
+      {
+        "symbol": "1000SHIBUSDT",
+        "score": 0.001693,
+        "trades": 22,
+        "win_rate": 45.45,
+        "total_r": 0.0711
+      },
+      {
+        "symbol": "WIFUSDT",
+        "score": -0.019156,
+        "trades": 12,
+        "win_rate": 41.67,
+        "total_r": -0.613
+      },
+      {
+        "symbol": "XRPUSDT",
+        "score": -0.025507,
+        "trades": 22,
+        "win_rate": 45.45,
+        "total_r": -1.0713
+      },
+      {
+        "symbol": "INJUSDT",
+        "score": -0.036047,
+        "trades": 18,
+        "win_rate": 44.44,
+        "total_r": -1.3698
+      },
+      {
+        "symbol": "AVAXUSDT",
+        "score": -0.038182,
+        "trades": 19,
+        "win_rate": 42.11,
+        "total_r": -1.4891
+      },
+      {
+        "symbol": "ARBUSDT",
+        "score": -0.041484,
+        "trades": 12,
+        "win_rate": 41.67,
+        "total_r": -1.3275
+      },
+      {
+        "symbol": "RUNEUSDT",
+        "score": -0.068119,
+        "trades": 12,
+        "win_rate": 50.0,
+        "total_r": -2.1798
+      },
+      {
+        "symbol": "ADAUSDT",
+        "score": -0.076978,
+        "trades": 12,
+        "win_rate": 33.33,
+        "total_r": -2.4633
+      },
+      {
+        "symbol": "BNBUSDT",
+        "score": -0.077668,
+        "trades": 20,
+        "win_rate": 35.0,
+        "total_r": -3.1067
+      },
+      {
+        "symbol": "ICPUSDT",
+        "score": -0.088281,
+        "trades": 11,
+        "win_rate": 36.36,
+        "total_r": -2.7367
+      },
+      {
+        "symbol": "ETHUSDT",
+        "score": -0.107856,
+        "trades": 12,
+        "win_rate": 41.67,
+        "total_r": -3.4514
+      },
+      {
+        "symbol": "UNIUSDT",
+        "score": -0.121903,
+        "trades": 18,
+        "win_rate": 27.78,
+        "total_r": -4.6323
+      },
+      {
+        "symbol": "NEARUSDT",
+        "score": -0.135014,
+        "trades": 15,
+        "win_rate": 26.67,
+        "total_r": -4.7255
+      },
+      {
+        "symbol": "DOTUSDT",
+        "score": -0.14971,
+        "trades": 10,
+        "win_rate": 30.0,
+        "total_r": -4.4913
+      },
+      {
+        "symbol": "ETCUSDT",
+        "score": -0.158433,
+        "trades": 13,
+        "win_rate": 30.77,
+        "total_r": -5.2283
+      },
+      {
+        "symbol": "BCHUSDT",
+        "score": -0.176223,
+        "trades": 19,
+        "win_rate": 26.32,
+        "total_r": -6.8727
+      },
+      {
+        "symbol": "LTCUSDT",
+        "score": -0.185727,
+        "trades": 17,
+        "win_rate": 23.53,
+        "total_r": -6.8719
+      },
+      {
+        "symbol": "TAOUSDT",
+        "score": -0.211281,
+        "trades": 16,
+        "win_rate": 18.75,
+        "total_r": -7.6061
+      },
+      {
+        "symbol": "FILUSDT",
+        "score": -0.228358,
+        "trades": 16,
+        "win_rate": 25.0,
+        "total_r": -8.2209
+      },
+      {
+        "symbol": "BTCUSDT",
+        "score": -0.277519,
+        "trades": 16,
+        "win_rate": 25.0,
+        "total_r": -9.9907
+      },
+      {
+        "symbol": "APTUSDT",
+        "score": -0.318786,
+        "trades": 15,
+        "win_rate": 13.33,
+        "total_r": -11.1575
+      },
+      {
+        "symbol": "SUIUSDT",
+        "score": -999.0,
+        "trades": 5,
+        "win_rate": 40.0,
+        "total_r": -0.2042
+      },
+      {
+        "symbol": "CRVUSDT",
+        "score": -999.0,
+        "trades": 8,
+        "win_rate": 50.0,
+        "total_r": 1.739
+      }
+    ]
+  },
+  "development_candidates": [
+    {
+      "session": "all",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 8,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "ATOMUSDT",
+        "DOGEUSDT",
+        "DOTUSDT",
+        "RENDERUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "TRXUSDT"
+      ],
+      "development": {
+        "trades": 474,
+        "trades_per_day": 3.95,
+        "win_rate": 47.26,
+        "profit_factor": 1.177,
+        "average_realized_r": 0.0902,
+        "return_percent": 6.48,
+        "max_drawdown_percent": 5.22
+      },
+      "development_stress": {
+        "trades": 474,
+        "trades_per_day": 3.95,
+        "win_rate": 47.26,
+        "profit_factor": 1.092,
+        "average_realized_r": 0.0494,
+        "return_percent": 3.44,
+        "max_drawdown_percent": 6.22
+      },
+      "profitable_months": 3
+    },
+    {
+      "session": "all",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 12,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AAVEUSDT",
+        "ADAUSDT",
+        "ATOMUSDT",
+        "DOGEUSDT",
+        "DOTUSDT",
+        "LINKUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "TRXUSDT"
+      ],
+      "development": {
+        "trades": 547,
+        "trades_per_day": 4.56,
+        "win_rate": 46.8,
+        "profit_factor": 1.145,
+        "average_realized_r": 0.0753,
+        "return_percent": 6.2,
+        "max_drawdown_percent": 5.63
+      },
+      "development_stress": {
+        "trades": 547,
+        "trades_per_day": 4.56,
+        "win_rate": 46.62,
+        "profit_factor": 1.064,
+        "average_realized_r": 0.0353,
+        "return_percent": 2.78,
+        "max_drawdown_percent": 6.73
+      },
+      "profitable_months": 3
+    },
+    {
+      "session": "all",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 16,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AAVEUSDT",
+        "ADAUSDT",
+        "ATOMUSDT",
+        "DOGEUSDT",
+        "DOTUSDT",
+        "ICPUSDT",
+        "LINKUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "TRXUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 625,
+        "trades_per_day": 5.21,
+        "win_rate": 44.96,
+        "profit_factor": 1.053,
+        "average_realized_r": 0.0299,
+        "return_percent": 2.65,
+        "max_drawdown_percent": 6.26
+      },
+      "development_stress": {
+        "trades": 625,
+        "trades_per_day": 5.21,
+        "win_rate": 44.8,
+        "profit_factor": 0.978,
+        "average_realized_r": -0.0099,
+        "return_percent": -1.11,
+        "max_drawdown_percent": 7.5
+      },
+      "profitable_months": 3
+    },
+    {
+      "session": "all",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 20,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AAVEUSDT",
+        "ADAUSDT",
+        "ARBUSDT",
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "DOGEUSDT",
+        "DOTUSDT",
+        "ICPUSDT",
+        "LINKUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "TRXUSDT",
+        "WIFUSDT",
+        "XLMUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 685,
+        "trades_per_day": 5.71,
+        "win_rate": 44.82,
+        "profit_factor": 1.049,
+        "average_realized_r": 0.0283,
+        "return_percent": 2.72,
+        "max_drawdown_percent": 6.35
+      },
+      "development_stress": {
+        "trades": 684,
+        "trades_per_day": 5.7,
+        "win_rate": 44.74,
+        "profit_factor": 0.979,
+        "average_realized_r": -0.0092,
+        "return_percent": -1.16,
+        "max_drawdown_percent": 7.71
+      },
+      "profitable_months": 3
+    },
+    {
+      "session": "all",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 24,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AAVEUSDT",
+        "ADAUSDT",
+        "ARBUSDT",
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "BCHUSDT",
+        "CRVUSDT",
+        "DOGEUSDT",
+        "DOTUSDT",
+        "ETHUSDT",
+        "ICPUSDT",
+        "INJUSDT",
+        "LINKUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "TRXUSDT",
+        "WIFUSDT",
+        "XLMUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 760,
+        "trades_per_day": 6.33,
+        "win_rate": 43.42,
+        "profit_factor": 0.984,
+        "average_realized_r": -0.007,
+        "return_percent": -1.03,
+        "max_drawdown_percent": 7.44
+      },
+      "development_stress": {
+        "trades": 760,
+        "trades_per_day": 6.33,
+        "win_rate": 43.16,
+        "profit_factor": 0.917,
+        "average_realized_r": -0.0463,
+        "return_percent": -5.36,
+        "max_drawdown_percent": 8.85
+      },
+      "profitable_months": 3
+    },
+    {
+      "session": "asia_00_08",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "requested_long_symbols": 8,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "ATOMUSDT",
+        "BCHUSDT",
+        "DOGEUSDT",
+        "ICPUSDT",
+        "LINKUSDT",
+        "NEARUSDT",
+        "SUIUSDT"
+      ],
+      "development": {
+        "trades": 375,
+        "trades_per_day": 3.12,
+        "win_rate": 43.47,
+        "profit_factor": 1.034,
+        "average_realized_r": 0.0199,
+        "return_percent": 1.02,
+        "max_drawdown_percent": 4.65
+      },
+      "development_stress": {
+        "trades": 375,
+        "trades_per_day": 3.12,
+        "win_rate": 43.47,
+        "profit_factor": 0.965,
+        "average_realized_r": -0.0175,
+        "return_percent": -1.08,
+        "max_drawdown_percent": 5.44
+      },
+      "profitable_months": 3
+    },
+    {
+      "session": "asia_00_08",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "requested_long_symbols": 12,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "ARBUSDT",
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "BCHUSDT",
+        "DOGEUSDT",
+        "ICPUSDT",
+        "LINKUSDT",
+        "NEARUSDT",
+        "RENDERUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 419,
+        "trades_per_day": 3.49,
+        "win_rate": 42.48,
+        "profit_factor": 0.967,
+        "average_realized_r": -0.0161,
+        "return_percent": -1.12,
+        "max_drawdown_percent": 6.15
+      },
+      "development_stress": {
+        "trades": 419,
+        "trades_per_day": 3.49,
+        "win_rate": 42.48,
+        "profit_factor": 0.902,
+        "average_realized_r": -0.0539,
+        "return_percent": -3.44,
+        "max_drawdown_percent": 7.02
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "asia_00_08",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "requested_long_symbols": 16,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "ARBUSDT",
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "BCHUSDT",
+        "DOGEUSDT",
+        "FILUSDT",
+        "ICPUSDT",
+        "INJUSDT",
+        "LINKUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "SUIUSDT",
+        "TAOUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 449,
+        "trades_per_day": 3.74,
+        "win_rate": 40.53,
+        "profit_factor": 0.879,
+        "average_realized_r": -0.0681,
+        "return_percent": -4.6,
+        "max_drawdown_percent": 6.87
+      },
+      "development_stress": {
+        "trades": 449,
+        "trades_per_day": 3.74,
+        "win_rate": 40.53,
+        "profit_factor": 0.82,
+        "average_realized_r": -0.1053,
+        "return_percent": -6.96,
+        "max_drawdown_percent": 8.89
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "asia_00_08",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "requested_long_symbols": 20,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "ARBUSDT",
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "BCHUSDT",
+        "BNBUSDT",
+        "CRVUSDT",
+        "DOGEUSDT",
+        "FILUSDT",
+        "ICPUSDT",
+        "INJUSDT",
+        "LINKUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "SUIUSDT",
+        "TAOUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 464,
+        "trades_per_day": 3.87,
+        "win_rate": 39.66,
+        "profit_factor": 0.841,
+        "average_realized_r": -0.0912,
+        "return_percent": -6.27,
+        "max_drawdown_percent": 8.4
+      },
+      "development_stress": {
+        "trades": 464,
+        "trades_per_day": 3.87,
+        "win_rate": 39.66,
+        "profit_factor": 0.785,
+        "average_realized_r": -0.1289,
+        "return_percent": -8.7,
+        "max_drawdown_percent": 10.59
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "asia_00_08",
+      "hours_utc": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "requested_long_symbols": 24,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "ARBUSDT",
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "BCHUSDT",
+        "BNBUSDT",
+        "CRVUSDT",
+        "DOGEUSDT",
+        "FILUSDT",
+        "ICPUSDT",
+        "INJUSDT",
+        "LINKUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "SUIUSDT",
+        "TAOUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 464,
+        "trades_per_day": 3.87,
+        "win_rate": 39.66,
+        "profit_factor": 0.841,
+        "average_realized_r": -0.0912,
+        "return_percent": -6.27,
+        "max_drawdown_percent": 8.4
+      },
+      "development_stress": {
+        "trades": 464,
+        "trades_per_day": 3.87,
+        "win_rate": 39.66,
+        "profit_factor": 0.785,
+        "average_realized_r": -0.1289,
+        "return_percent": -8.7,
+        "max_drawdown_percent": 10.59
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "europe_08_16",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "requested_long_symbols": 8,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AVAXUSDT",
+        "DOGEUSDT",
+        "INJUSDT",
+        "LTCUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "TRXUSDT"
+      ],
+      "development": {
+        "trades": 383,
+        "trades_per_day": 3.19,
+        "win_rate": 42.56,
+        "profit_factor": 0.972,
+        "average_realized_r": -0.0131,
+        "return_percent": -0.86,
+        "max_drawdown_percent": 5.71
+      },
+      "development_stress": {
+        "trades": 382,
+        "trades_per_day": 3.18,
+        "win_rate": 42.41,
+        "profit_factor": 0.896,
+        "average_realized_r": -0.0565,
+        "return_percent": -3.29,
+        "max_drawdown_percent": 6.8
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "europe_08_16",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "requested_long_symbols": 12,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "DOGEUSDT",
+        "INJUSDT",
+        "LTCUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "TRXUSDT",
+        "UNIUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 426,
+        "trades_per_day": 3.55,
+        "win_rate": 41.55,
+        "profit_factor": 0.93,
+        "average_realized_r": -0.0375,
+        "return_percent": -2.48,
+        "max_drawdown_percent": 6.65
+      },
+      "development_stress": {
+        "trades": 425,
+        "trades_per_day": 3.54,
+        "win_rate": 41.41,
+        "profit_factor": 0.857,
+        "average_realized_r": -0.0814,
+        "return_percent": -5.17,
+        "max_drawdown_percent": 8.08
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "europe_08_16",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "requested_long_symbols": 16,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AVAXUSDT",
+        "BCHUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "FILUSDT",
+        "INJUSDT",
+        "LTCUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "TRXUSDT",
+        "UNIUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 461,
+        "trades_per_day": 3.84,
+        "win_rate": 40.35,
+        "profit_factor": 0.856,
+        "average_realized_r": -0.0819,
+        "return_percent": -5.63,
+        "max_drawdown_percent": 8.91
+      },
+      "development_stress": {
+        "trades": 461,
+        "trades_per_day": 3.84,
+        "win_rate": 40.13,
+        "profit_factor": 0.792,
+        "average_realized_r": -0.1241,
+        "return_percent": -8.34,
+        "max_drawdown_percent": 11.06
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "europe_08_16",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "requested_long_symbols": 20,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "APTUSDT",
+        "AVAXUSDT",
+        "BCHUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "FILUSDT",
+        "INJUSDT",
+        "LTCUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "TRXUSDT",
+        "UNIUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 468,
+        "trades_per_day": 3.9,
+        "win_rate": 40.17,
+        "profit_factor": 0.849,
+        "average_realized_r": -0.0868,
+        "return_percent": -6.03,
+        "max_drawdown_percent": 9.3
+      },
+      "development_stress": {
+        "trades": 468,
+        "trades_per_day": 3.9,
+        "win_rate": 39.96,
+        "profit_factor": 0.786,
+        "average_realized_r": -0.1287,
+        "return_percent": -8.76,
+        "max_drawdown_percent": 11.46
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "europe_08_16",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "requested_long_symbols": 24,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "APTUSDT",
+        "AVAXUSDT",
+        "BCHUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "FILUSDT",
+        "INJUSDT",
+        "LTCUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "TRXUSDT",
+        "UNIUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 468,
+        "trades_per_day": 3.9,
+        "win_rate": 40.17,
+        "profit_factor": 0.849,
+        "average_realized_r": -0.0868,
+        "return_percent": -6.03,
+        "max_drawdown_percent": 9.3
+      },
+      "development_stress": {
+        "trades": 468,
+        "trades_per_day": 3.9,
+        "win_rate": 39.96,
+        "profit_factor": 0.786,
+        "average_realized_r": -0.1287,
+        "return_percent": -8.76,
+        "max_drawdown_percent": 11.46
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "us_16_24",
+      "hours_utc": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 8,
+      "long_symbols": [
+        "TAOUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.893,
+        "average_realized_r": -0.0569,
+        "return_percent": -2.59,
+        "max_drawdown_percent": 6.32
+      },
+      "development_stress": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.833,
+        "average_realized_r": -0.093,
+        "return_percent": -4.15,
+        "max_drawdown_percent": 7.36
+      },
+      "profitable_months": 1
+    },
+    {
+      "session": "us_16_24",
+      "hours_utc": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 12,
+      "long_symbols": [
+        "TAOUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.893,
+        "average_realized_r": -0.0569,
+        "return_percent": -2.59,
+        "max_drawdown_percent": 6.32
+      },
+      "development_stress": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.833,
+        "average_realized_r": -0.093,
+        "return_percent": -4.15,
+        "max_drawdown_percent": 7.36
+      },
+      "profitable_months": 1
+    },
+    {
+      "session": "us_16_24",
+      "hours_utc": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 16,
+      "long_symbols": [
+        "TAOUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.893,
+        "average_realized_r": -0.0569,
+        "return_percent": -2.59,
+        "max_drawdown_percent": 6.32
+      },
+      "development_stress": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.833,
+        "average_realized_r": -0.093,
+        "return_percent": -4.15,
+        "max_drawdown_percent": 7.36
+      },
+      "profitable_months": 1
+    },
+    {
+      "session": "us_16_24",
+      "hours_utc": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 20,
+      "long_symbols": [
+        "TAOUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.893,
+        "average_realized_r": -0.0569,
+        "return_percent": -2.59,
+        "max_drawdown_percent": 6.32
+      },
+      "development_stress": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.833,
+        "average_realized_r": -0.093,
+        "return_percent": -4.15,
+        "max_drawdown_percent": 7.36
+      },
+      "profitable_months": 1
+    },
+    {
+      "session": "us_16_24",
+      "hours_utc": [
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 24,
+      "long_symbols": [
+        "TAOUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.893,
+        "average_realized_r": -0.0569,
+        "return_percent": -2.59,
+        "max_drawdown_percent": 6.32
+      },
+      "development_stress": {
+        "trades": 298,
+        "trades_per_day": 2.48,
+        "win_rate": 39.93,
+        "profit_factor": 0.833,
+        "average_realized_r": -0.093,
+        "return_percent": -4.15,
+        "max_drawdown_percent": 7.36
+      },
+      "profitable_months": 1
+    },
+    {
+      "session": "europe_us_08_24",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 8,
+      "long_symbols": [
+        "AAVEUSDT",
+        "ATOMUSDT",
+        "DOGEUSDT",
+        "LINKUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "SOLUSDT",
+        "TRXUSDT"
+      ],
+      "development": {
+        "trades": 403,
+        "trades_per_day": 3.36,
+        "win_rate": 46.65,
+        "profit_factor": 1.155,
+        "average_realized_r": 0.0805,
+        "return_percent": 4.87,
+        "max_drawdown_percent": 4.46
+      },
+      "development_stress": {
+        "trades": 402,
+        "trades_per_day": 3.35,
+        "win_rate": 46.52,
+        "profit_factor": 1.067,
+        "average_realized_r": 0.0372,
+        "return_percent": 2.16,
+        "max_drawdown_percent": 5.65
+      },
+      "profitable_months": 3
+    },
+    {
+      "session": "europe_us_08_24",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 12,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AAVEUSDT",
+        "ATOMUSDT",
+        "DOGEUSDT",
+        "LINKUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "SOLUSDT",
+        "TRXUSDT",
+        "WIFUSDT",
+        "XLMUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 470,
+        "trades_per_day": 3.92,
+        "win_rate": 45.96,
+        "profit_factor": 1.114,
+        "average_realized_r": 0.0605,
+        "return_percent": 4.22,
+        "max_drawdown_percent": 4.46
+      },
+      "development_stress": {
+        "trades": 469,
+        "trades_per_day": 3.91,
+        "win_rate": 45.84,
+        "profit_factor": 1.029,
+        "average_realized_r": 0.0174,
+        "return_percent": 1.1,
+        "max_drawdown_percent": 5.81
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "europe_us_08_24",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 16,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AAVEUSDT",
+        "ARBUSDT",
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "DOGEUSDT",
+        "INJUSDT",
+        "LINKUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "SOLUSDT",
+        "TRXUSDT",
+        "WIFUSDT",
+        "XLMUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 523,
+        "trades_per_day": 4.36,
+        "win_rate": 45.7,
+        "profit_factor": 1.084,
+        "average_realized_r": 0.0459,
+        "return_percent": 3.5,
+        "max_drawdown_percent": 5.28
+      },
+      "development_stress": {
+        "trades": 522,
+        "trades_per_day": 4.35,
+        "win_rate": 45.4,
+        "profit_factor": 1.003,
+        "average_realized_r": 0.0038,
+        "return_percent": 0.14,
+        "max_drawdown_percent": 6.72
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "europe_us_08_24",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 20,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AAVEUSDT",
+        "ADAUSDT",
+        "ARBUSDT",
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "ICPUSDT",
+        "INJUSDT",
+        "LINKUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "SOLUSDT",
+        "TRXUSDT",
+        "WIFUSDT",
+        "XLMUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 568,
+        "trades_per_day": 4.73,
+        "win_rate": 44.54,
+        "profit_factor": 1.031,
+        "average_realized_r": 0.0185,
+        "return_percent": 1.41,
+        "max_drawdown_percent": 5.71
+      },
+      "development_stress": {
+        "trades": 567,
+        "trades_per_day": 4.72,
+        "win_rate": 44.09,
+        "profit_factor": 0.953,
+        "average_realized_r": -0.0243,
+        "return_percent": -2.21,
+        "max_drawdown_percent": 7.25
+      },
+      "profitable_months": 2
+    },
+    {
+      "session": "europe_us_08_24",
+      "hours_utc": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "requested_long_symbols": 24,
+      "long_symbols": [
+        "1000SHIBUSDT",
+        "AAVEUSDT",
+        "ADAUSDT",
+        "ARBUSDT",
+        "ATOMUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "DOGEUSDT",
+        "DOTUSDT",
+        "ETCUSDT",
+        "ETHUSDT",
+        "ICPUSDT",
+        "INJUSDT",
+        "LINKUSDT",
+        "NEARUSDT",
+        "OPUSDT",
+        "RENDERUSDT",
+        "RUNEUSDT",
+        "SOLUSDT",
+        "TRXUSDT",
+        "UNIUSDT",
+        "WIFUSDT",
+        "XLMUSDT",
+        "XRPUSDT"
+      ],
+      "development": {
+        "trades": 604,
+        "trades_per_day": 5.03,
+        "win_rate": 43.05,
+        "profit_factor": 0.975,
+        "average_realized_r": -0.0117,
+        "return_percent": -1.23,
+        "max_drawdown_percent": 7.26
+      },
+      "development_stress": {
+        "trades": 603,
+        "trades_per_day": 5.03,
+        "win_rate": 42.62,
+        "profit_factor": 0.902,
+        "average_realized_r": -0.0538,
+        "return_percent": -4.92,
+        "max_drawdown_percent": 8.88
+      },
+      "profitable_months": 2
+    }
+  ],
+  "selected_on_development": {
+    "session": "all",
+    "hours_utc": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ],
+    "requested_long_symbols": 12,
+    "long_symbols": [
+      "1000SHIBUSDT",
+      "AAVEUSDT",
+      "ADAUSDT",
+      "ATOMUSDT",
+      "DOGEUSDT",
+      "DOTUSDT",
+      "LINKUSDT",
+      "RENDERUSDT",
+      "RUNEUSDT",
+      "SOLUSDT",
+      "SUIUSDT",
+      "TRXUSDT"
+    ],
+    "development": {
+      "trades": 547,
+      "trades_per_day": 4.56,
+      "win_rate": 46.8,
+      "profit_factor": 1.145,
+      "average_realized_r": 0.0753,
+      "return_percent": 6.2,
+      "max_drawdown_percent": 5.63
+    },
+    "development_stress": {
+      "trades": 547,
+      "trades_per_day": 4.56,
+      "win_rate": 46.62,
+      "profit_factor": 1.064,
+      "average_realized_r": 0.0353,
+      "return_percent": 2.78,
+      "max_drawdown_percent": 6.73
+    },
+    "profitable_months": 3
+  },
+  "development_gate_passed": true,
+  "validation": {
+    "trades": 1260,
+    "trades_per_day": 5.04,
+    "win_rate": 43.73,
+    "profit_factor": 0.953,
+    "average_realized_r": -0.0248,
+    "return_percent": -4.94,
+    "max_drawdown_percent": 12.45
+  },
+  "validation_stress": {
+    "trades": 1257,
+    "trades_per_day": 5.03,
+    "win_rate": 43.2,
+    "profit_factor": 0.886,
+    "average_realized_r": -0.0647,
+    "return_percent": -11.82,
+    "max_drawdown_percent": 15.16
+  },
+  "validation_months": [
+    {
+      "start_utc": "2025-09-26T19:45:00+00:00",
+      "end_utc": "2025-10-26T19:45:00+00:00",
+      "trades": 152,
+      "trades_per_day": 5.07,
+      "win_rate": 44.74,
+      "profit_factor": 0.939,
+      "average_realized_r": -0.0333,
+      "net_pnl": -80.74
+    },
+    {
+      "start_utc": "2025-10-26T19:45:00+00:00",
+      "end_utc": "2025-11-25T19:45:00+00:00",
+      "trades": 160,
+      "trades_per_day": 5.33,
+      "win_rate": 38.75,
+      "profit_factor": 0.852,
+      "average_realized_r": -0.0916,
+      "net_pnl": -221.0
+    },
+    {
+      "start_utc": "2025-11-25T19:45:00+00:00",
+      "end_utc": "2025-12-25T19:45:00+00:00",
+      "trades": 165,
+      "trades_per_day": 5.5,
+      "win_rate": 32.12,
+      "profit_factor": 0.543,
+      "average_realized_r": -0.3196,
+      "net_pnl": -741.63
+    },
+    {
+      "start_utc": "2025-12-25T19:45:00+00:00",
+      "end_utc": "2026-01-24T19:45:00+00:00",
+      "trades": 131,
+      "trades_per_day": 4.37,
+      "win_rate": 51.91,
+      "profit_factor": 1.3,
+      "average_realized_r": 0.1498,
+      "net_pnl": 264.18
+    },
+    {
+      "start_utc": "2026-01-24T19:45:00+00:00",
+      "end_utc": "2026-02-23T19:45:00+00:00",
+      "trades": 143,
+      "trades_per_day": 4.77,
+      "win_rate": 44.06,
+      "profit_factor": 1.015,
+      "average_realized_r": 0.0109,
+      "net_pnl": 17.06
+    },
+    {
+      "start_utc": "2026-02-23T19:45:00+00:00",
+      "end_utc": "2026-03-25T19:45:00+00:00",
+      "trades": 152,
+      "trades_per_day": 5.07,
+      "win_rate": 50.0,
+      "profit_factor": 1.331,
+      "average_realized_r": 0.1662,
+      "net_pnl": 351.51
+    },
+    {
+      "start_utc": "2026-03-25T19:45:00+00:00",
+      "end_utc": "2026-04-24T19:45:00+00:00",
+      "trades": 172,
+      "trades_per_day": 5.73,
+      "win_rate": 38.37,
+      "profit_factor": 0.778,
+      "average_realized_r": -0.1381,
+      "net_pnl": -340.65
+    },
+    {
+      "start_utc": "2026-04-24T19:45:00+00:00",
+      "end_utc": "2026-05-24T19:45:00+00:00",
+      "trades": 145,
+      "trades_per_day": 4.83,
+      "win_rate": 53.1,
+      "profit_factor": 1.241,
+      "average_realized_r": 0.1264,
+      "net_pnl": 254.81
+    }
+  ],
+  "validation_passed": false,
+  "holdout_opened": false
+}

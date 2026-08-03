@@ -1,0 +1,70 @@
+{
+  "app": {
+    "name": "Crypto Autobot Intraday Research",
+    "host": "127.0.0.1",
+    "port": 8090,
+    "timezone": "Europe/Warsaw",
+    "scan_interval_seconds": 20,
+    "data_dir": "crypto_autobot/data/intraday"
+  },
+  "market": {
+    "base_url": "https://demo-fapi.binance.com",
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"],
+    "interval": "5m",
+    "history_limit": 1000
+  },
+  "broker": {
+    "mode": "demo",
+    "recv_window_ms": 5000,
+    "quote_asset": "USDT",
+    "leverage": 2,
+    "margin_type": "ISOLATED",
+    "working_type": "MARK_PRICE",
+    "price_protect": false
+  },
+  "strategy": {
+    "type": "intraday_pullback",
+    "enabled": true,
+    "entry_fast_ema": 9,
+    "entry_slow_ema": 21,
+    "regime_fast_ema": 48,
+    "regime_slow_ema": 144,
+    "regime_slope_bars": 12,
+    "min_regime_slope_percent": 0.02,
+    "pullback_lookback": 4,
+    "pullback_tolerance_atr": 0.15,
+    "min_confirmation_body_ratio": 0.35,
+    "atr_length": 14,
+    "adx_length": 14,
+    "min_adx": 17.0,
+    "rsi_length": 14,
+    "long_rsi_min": 50.0,
+    "long_rsi_max": 72.0,
+    "short_rsi_min": 28.0,
+    "short_rsi_max": 50.0,
+    "volume_sma_length": 20,
+    "min_volume_factor": 0.8,
+    "min_atr_percent": 0.04,
+    "max_atr_percent": 1.8,
+    "stop_atr": 1.5,
+    "target_atr": 2.25,
+    "max_holding_bars": 36,
+    "cooldown_bars": 6,
+    "allow_shorts": true,
+    "trail_after_r": 99.0,
+    "trail_atr": 1.5
+  },
+  "account": {
+    "initial_balance": 10000.0,
+    "risk_per_trade_percent": 0.15,
+    "max_open_positions": 2,
+    "max_daily_trades": 8,
+    "max_daily_loss_percent": 1.5,
+    "same_candle_exit": "stop_first"
+  },
+  "notifications": {
+    "telegram_enabled": false,
+    "token_env": "TELEGRAM_BOT_TOKEN",
+    "chat_id_env": "TELEGRAM_CHAT_ID"
+  }
+}

@@ -1,0 +1,752 @@
+{
+  "method": {
+    "model": "HistGradientBoostingClassifier",
+    "target": "probability of positive net R for next-open 1:2 trade",
+    "training": "90d fit, 30d cost-aware calibration, next 30d trade",
+    "features": "price, trend, volatility, volume, taker imbalance, BTC regime, calendar, symbol",
+    "costs": "taker entry/stop/time exit; maker target without slippage",
+    "ensemble": "pullback baseline plus classifier; shared 4-position and 8-trade/day limits",
+    "generated_at": "2026-08-03T00:07:19+00:00"
+  },
+  "baseline_validation": {
+    "short_only": {
+      "trades": 700,
+      "trades_per_day": 2.8,
+      "win_rate": 49.0,
+      "profit_factor": 1.188,
+      "average_realized_r": 0.0968,
+      "return_percent": 10.46,
+      "max_drawdown_percent": 6.33
+    },
+    "both_sides": {
+      "trades": 1193,
+      "trades_per_day": 4.77,
+      "win_rate": 45.26,
+      "profit_factor": 1.047,
+      "average_realized_r": 0.0274,
+      "return_percent": 4.67,
+      "max_drawdown_percent": 9.7
+    }
+  },
+  "baseline_validation_stress": {
+    "short_only": {
+      "trades": 700,
+      "trades_per_day": 2.8,
+      "win_rate": 48.14,
+      "profit_factor": 1.114,
+      "average_realized_r": 0.0616,
+      "return_percent": 6.45,
+      "max_drawdown_percent": 6.99
+    },
+    "both_sides": {
+      "trades": 1193,
+      "trades_per_day": 4.77,
+      "win_rate": 44.68,
+      "profit_factor": 0.984,
+      "average_realized_r": -0.0072,
+      "return_percent": -1.62,
+      "max_drawdown_percent": 10.68
+    }
+  },
+  "validation_candidates": [
+    {
+      "baseline_mode": "short_only",
+      "signal_quantile": 0.975,
+      "classifier": {
+        "trades": 448,
+        "trades_per_day": 1.79,
+        "win_rate": 44.87,
+        "profit_factor": 1.145,
+        "average_realized_r": 0.0764,
+        "return_percent": 5.11,
+        "max_drawdown_percent": 3.49
+      },
+      "classifier_stress": {
+        "trades": 448,
+        "trades_per_day": 1.79,
+        "win_rate": 42.86,
+        "profit_factor": 1.023,
+        "average_realized_r": 0.015,
+        "return_percent": 0.87,
+        "max_drawdown_percent": 4.92
+      },
+      "ensemble": {
+        "trades": 1021,
+        "trades_per_day": 4.08,
+        "win_rate": 45.94,
+        "profit_factor": 1.103,
+        "average_realized_r": 0.0557,
+        "return_percent": 8.57,
+        "max_drawdown_percent": 5.47,
+        "by_source": {
+          "baseline": 627,
+          "classifier": 394
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1021,
+        "trades_per_day": 4.08,
+        "win_rate": 44.47,
+        "profit_factor": 1.012,
+        "average_realized_r": 0.0085,
+        "return_percent": 1.0,
+        "max_drawdown_percent": 8.23,
+        "by_source": {
+          "baseline": 627,
+          "classifier": 394
+        }
+      },
+      "profitable_months": 8
+    },
+    {
+      "baseline_mode": "both_sides",
+      "signal_quantile": 0.975,
+      "classifier": {
+        "trades": 448,
+        "trades_per_day": 1.79,
+        "win_rate": 44.87,
+        "profit_factor": 1.145,
+        "average_realized_r": 0.0764,
+        "return_percent": 5.11,
+        "max_drawdown_percent": 3.49
+      },
+      "classifier_stress": {
+        "trades": 448,
+        "trades_per_day": 1.79,
+        "win_rate": 42.86,
+        "profit_factor": 1.023,
+        "average_realized_r": 0.015,
+        "return_percent": 0.87,
+        "max_drawdown_percent": 4.92
+      },
+      "ensemble": {
+        "trades": 1406,
+        "trades_per_day": 5.62,
+        "win_rate": 44.59,
+        "profit_factor": 1.055,
+        "average_realized_r": 0.0314,
+        "return_percent": 6.41,
+        "max_drawdown_percent": 5.16,
+        "by_source": {
+          "baseline": 1057,
+          "classifier": 349
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1406,
+        "trades_per_day": 5.62,
+        "win_rate": 43.67,
+        "profit_factor": 0.976,
+        "average_realized_r": -0.0115,
+        "return_percent": -2.79,
+        "max_drawdown_percent": 8.51,
+        "by_source": {
+          "baseline": 1057,
+          "classifier": 349
+        }
+      },
+      "profitable_months": 6
+    },
+    {
+      "baseline_mode": "short_only",
+      "signal_quantile": 0.98,
+      "classifier": {
+        "trades": 561,
+        "trades_per_day": 2.24,
+        "win_rate": 44.92,
+        "profit_factor": 1.075,
+        "average_realized_r": 0.0409,
+        "return_percent": 3.33,
+        "max_drawdown_percent": 6.52
+      },
+      "classifier_stress": {
+        "trades": 561,
+        "trades_per_day": 2.24,
+        "win_rate": 42.96,
+        "profit_factor": 0.962,
+        "average_realized_r": -0.019,
+        "return_percent": -1.75,
+        "max_drawdown_percent": 8.62
+      },
+      "ensemble": {
+        "trades": 1109,
+        "trades_per_day": 4.44,
+        "win_rate": 45.9,
+        "profit_factor": 1.078,
+        "average_realized_r": 0.0427,
+        "return_percent": 7.02,
+        "max_drawdown_percent": 4.76,
+        "by_source": {
+          "baseline": 617,
+          "classifier": 492
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1110,
+        "trades_per_day": 4.44,
+        "win_rate": 44.32,
+        "profit_factor": 0.985,
+        "average_realized_r": -0.0063,
+        "return_percent": -1.36,
+        "max_drawdown_percent": 8.09,
+        "by_source": {
+          "baseline": 618,
+          "classifier": 492
+        }
+      },
+      "profitable_months": 8
+    },
+    {
+      "baseline_mode": "both_sides",
+      "signal_quantile": 0.98,
+      "classifier": {
+        "trades": 561,
+        "trades_per_day": 2.24,
+        "win_rate": 44.92,
+        "profit_factor": 1.075,
+        "average_realized_r": 0.0409,
+        "return_percent": 3.33,
+        "max_drawdown_percent": 6.52
+      },
+      "classifier_stress": {
+        "trades": 561,
+        "trades_per_day": 2.24,
+        "win_rate": 42.96,
+        "profit_factor": 0.962,
+        "average_realized_r": -0.019,
+        "return_percent": -1.75,
+        "max_drawdown_percent": 8.62
+      },
+      "ensemble": {
+        "trades": 1458,
+        "trades_per_day": 5.83,
+        "win_rate": 44.31,
+        "profit_factor": 1.027,
+        "average_realized_r": 0.0163,
+        "return_percent": 3.21,
+        "max_drawdown_percent": 5.0,
+        "by_source": {
+          "baseline": 1031,
+          "classifier": 427
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1459,
+        "trades_per_day": 5.84,
+        "win_rate": 43.25,
+        "profit_factor": 0.947,
+        "average_realized_r": -0.0281,
+        "return_percent": -6.33,
+        "max_drawdown_percent": 9.36,
+        "by_source": {
+          "baseline": 1032,
+          "classifier": 427
+        }
+      },
+      "profitable_months": 5
+    },
+    {
+      "baseline_mode": "short_only",
+      "signal_quantile": 0.985,
+      "classifier": {
+        "trades": 484,
+        "trades_per_day": 1.94,
+        "win_rate": 44.83,
+        "profit_factor": 1.116,
+        "average_realized_r": 0.0609,
+        "return_percent": 4.36,
+        "max_drawdown_percent": 6.82
+      },
+      "classifier_stress": {
+        "trades": 484,
+        "trades_per_day": 1.94,
+        "win_rate": 42.98,
+        "profit_factor": 1.006,
+        "average_realized_r": 0.0055,
+        "return_percent": 0.25,
+        "max_drawdown_percent": 9.03
+      },
+      "ensemble": {
+        "trades": 1050,
+        "trades_per_day": 4.2,
+        "win_rate": 46.57,
+        "profit_factor": 1.121,
+        "average_realized_r": 0.0647,
+        "return_percent": 10.38,
+        "max_drawdown_percent": 5.57,
+        "by_source": {
+          "baseline": 628,
+          "classifier": 422
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1051,
+        "trades_per_day": 4.2,
+        "win_rate": 45.1,
+        "profit_factor": 1.034,
+        "average_realized_r": 0.0203,
+        "return_percent": 2.93,
+        "max_drawdown_percent": 7.59,
+        "by_source": {
+          "baseline": 629,
+          "classifier": 422
+        }
+      },
+      "profitable_months": 7
+    },
+    {
+      "baseline_mode": "both_sides",
+      "signal_quantile": 0.985,
+      "classifier": {
+        "trades": 484,
+        "trades_per_day": 1.94,
+        "win_rate": 44.83,
+        "profit_factor": 1.116,
+        "average_realized_r": 0.0609,
+        "return_percent": 4.36,
+        "max_drawdown_percent": 6.82
+      },
+      "classifier_stress": {
+        "trades": 484,
+        "trades_per_day": 1.94,
+        "win_rate": 42.98,
+        "profit_factor": 1.006,
+        "average_realized_r": 0.0055,
+        "return_percent": 0.25,
+        "max_drawdown_percent": 9.03
+      },
+      "ensemble": {
+        "trades": 1427,
+        "trades_per_day": 5.71,
+        "win_rate": 44.5,
+        "profit_factor": 1.051,
+        "average_realized_r": 0.0297,
+        "return_percent": 6.13,
+        "max_drawdown_percent": 5.0,
+        "by_source": {
+          "baseline": 1055,
+          "classifier": 372
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1429,
+        "trades_per_day": 5.72,
+        "win_rate": 43.6,
+        "profit_factor": 0.977,
+        "average_realized_r": -0.011,
+        "return_percent": -2.72,
+        "max_drawdown_percent": 7.33,
+        "by_source": {
+          "baseline": 1057,
+          "classifier": 372
+        }
+      },
+      "profitable_months": 7
+    },
+    {
+      "baseline_mode": "short_only",
+      "signal_quantile": 0.99,
+      "classifier": {
+        "trades": 370,
+        "trades_per_day": 1.48,
+        "win_rate": 47.3,
+        "profit_factor": 1.212,
+        "average_realized_r": 0.1037,
+        "return_percent": 5.8,
+        "max_drawdown_percent": 5.1
+      },
+      "classifier_stress": {
+        "trades": 370,
+        "trades_per_day": 1.48,
+        "win_rate": 46.22,
+        "profit_factor": 1.101,
+        "average_realized_r": 0.0537,
+        "return_percent": 2.91,
+        "max_drawdown_percent": 6.62
+      },
+      "ensemble": {
+        "trades": 959,
+        "trades_per_day": 3.84,
+        "win_rate": 47.45,
+        "profit_factor": 1.135,
+        "average_realized_r": 0.0715,
+        "return_percent": 10.52,
+        "max_drawdown_percent": 4.15,
+        "by_source": {
+          "baseline": 645,
+          "classifier": 314
+        }
+      },
+      "ensemble_stress": {
+        "trades": 960,
+        "trades_per_day": 3.84,
+        "win_rate": 46.46,
+        "profit_factor": 1.055,
+        "average_realized_r": 0.0314,
+        "return_percent": 4.34,
+        "max_drawdown_percent": 5.46,
+        "by_source": {
+          "baseline": 646,
+          "classifier": 314
+        }
+      },
+      "profitable_months": 7
+    },
+    {
+      "baseline_mode": "both_sides",
+      "signal_quantile": 0.99,
+      "classifier": {
+        "trades": 370,
+        "trades_per_day": 1.48,
+        "win_rate": 47.3,
+        "profit_factor": 1.212,
+        "average_realized_r": 0.1037,
+        "return_percent": 5.8,
+        "max_drawdown_percent": 5.1
+      },
+      "classifier_stress": {
+        "trades": 370,
+        "trades_per_day": 1.48,
+        "win_rate": 46.22,
+        "profit_factor": 1.101,
+        "average_realized_r": 0.0537,
+        "return_percent": 2.91,
+        "max_drawdown_percent": 6.62
+      },
+      "ensemble": {
+        "trades": 1373,
+        "trades_per_day": 5.49,
+        "win_rate": 44.79,
+        "profit_factor": 1.042,
+        "average_realized_r": 0.0245,
+        "return_percent": 4.77,
+        "max_drawdown_percent": 5.0,
+        "by_source": {
+          "baseline": 1093,
+          "classifier": 280
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1374,
+        "trades_per_day": 5.5,
+        "win_rate": 44.18,
+        "profit_factor": 0.972,
+        "average_realized_r": -0.0139,
+        "return_percent": -3.19,
+        "max_drawdown_percent": 6.85,
+        "by_source": {
+          "baseline": 1094,
+          "classifier": 280
+        }
+      },
+      "profitable_months": 6
+    },
+    {
+      "baseline_mode": "short_only",
+      "signal_quantile": 0.995,
+      "classifier": {
+        "trades": 267,
+        "trades_per_day": 1.07,
+        "win_rate": 48.69,
+        "profit_factor": 1.324,
+        "average_realized_r": 0.1515,
+        "return_percent": 6.15,
+        "max_drawdown_percent": 3.34
+      },
+      "classifier_stress": {
+        "trades": 267,
+        "trades_per_day": 1.07,
+        "win_rate": 47.57,
+        "profit_factor": 1.209,
+        "average_realized_r": 0.1041,
+        "return_percent": 4.15,
+        "max_drawdown_percent": 4.07
+      },
+      "ensemble": {
+        "trades": 881,
+        "trades_per_day": 3.52,
+        "win_rate": 48.92,
+        "profit_factor": 1.217,
+        "average_realized_r": 0.1107,
+        "return_percent": 15.44,
+        "max_drawdown_percent": 3.75,
+        "by_source": {
+          "baseline": 660,
+          "classifier": 221
+        }
+      },
+      "ensemble_stress": {
+        "trades": 880,
+        "trades_per_day": 3.52,
+        "win_rate": 47.84,
+        "profit_factor": 1.13,
+        "average_realized_r": 0.0696,
+        "return_percent": 9.33,
+        "max_drawdown_percent": 5.05,
+        "by_source": {
+          "baseline": 659,
+          "classifier": 221
+        }
+      },
+      "profitable_months": 8
+    },
+    {
+      "baseline_mode": "both_sides",
+      "signal_quantile": 0.995,
+      "classifier": {
+        "trades": 267,
+        "trades_per_day": 1.07,
+        "win_rate": 48.69,
+        "profit_factor": 1.324,
+        "average_realized_r": 0.1515,
+        "return_percent": 6.15,
+        "max_drawdown_percent": 3.34
+      },
+      "classifier_stress": {
+        "trades": 267,
+        "trades_per_day": 1.07,
+        "win_rate": 47.57,
+        "profit_factor": 1.209,
+        "average_realized_r": 0.1041,
+        "return_percent": 4.15,
+        "max_drawdown_percent": 4.07
+      },
+      "ensemble": {
+        "trades": 1314,
+        "trades_per_day": 5.26,
+        "win_rate": 45.81,
+        "profit_factor": 1.09,
+        "average_realized_r": 0.05,
+        "return_percent": 9.94,
+        "max_drawdown_percent": 5.0,
+        "by_source": {
+          "baseline": 1115,
+          "classifier": 199
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1315,
+        "trades_per_day": 5.26,
+        "win_rate": 45.17,
+        "profit_factor": 1.017,
+        "average_realized_r": 0.0113,
+        "return_percent": 1.87,
+        "max_drawdown_percent": 6.3,
+        "by_source": {
+          "baseline": 1116,
+          "classifier": 199
+        }
+      },
+      "profitable_months": 7
+    },
+    {
+      "baseline_mode": "short_only",
+      "signal_quantile": "dynamic",
+      "classifier": {
+        "trades": 491,
+        "trades_per_day": 1.96,
+        "win_rate": 45.62,
+        "profit_factor": 1.142,
+        "average_realized_r": 0.0744,
+        "return_percent": 5.47,
+        "max_drawdown_percent": 5.28
+      },
+      "classifier_stress": {
+        "trades": 491,
+        "trades_per_day": 1.96,
+        "win_rate": 43.58,
+        "profit_factor": 1.035,
+        "average_realized_r": 0.021,
+        "return_percent": 1.4,
+        "max_drawdown_percent": 6.93
+      },
+      "ensemble": {
+        "trades": 1054,
+        "trades_per_day": 4.22,
+        "win_rate": 46.49,
+        "profit_factor": 1.106,
+        "average_realized_r": 0.0574,
+        "return_percent": 9.15,
+        "max_drawdown_percent": 3.2,
+        "by_source": {
+          "baseline": 626,
+          "classifier": 428
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1055,
+        "trades_per_day": 4.22,
+        "win_rate": 45.02,
+        "profit_factor": 1.023,
+        "average_realized_r": 0.0145,
+        "return_percent": 2.0,
+        "max_drawdown_percent": 5.27,
+        "by_source": {
+          "baseline": 627,
+          "classifier": 428
+        }
+      },
+      "profitable_months": 8
+    },
+    {
+      "baseline_mode": "both_sides",
+      "signal_quantile": "dynamic",
+      "classifier": {
+        "trades": 491,
+        "trades_per_day": 1.96,
+        "win_rate": 45.62,
+        "profit_factor": 1.142,
+        "average_realized_r": 0.0744,
+        "return_percent": 5.47,
+        "max_drawdown_percent": 5.28
+      },
+      "classifier_stress": {
+        "trades": 491,
+        "trades_per_day": 1.96,
+        "win_rate": 43.58,
+        "profit_factor": 1.035,
+        "average_realized_r": 0.021,
+        "return_percent": 1.4,
+        "max_drawdown_percent": 6.93
+      },
+      "ensemble": {
+        "trades": 1438,
+        "trades_per_day": 5.75,
+        "win_rate": 44.58,
+        "profit_factor": 1.044,
+        "average_realized_r": 0.0254,
+        "return_percent": 5.2,
+        "max_drawdown_percent": 5.0,
+        "by_source": {
+          "baseline": 1053,
+          "classifier": 385
+        }
+      },
+      "ensemble_stress": {
+        "trades": 1439,
+        "trades_per_day": 5.76,
+        "win_rate": 43.64,
+        "profit_factor": 0.971,
+        "average_realized_r": -0.0145,
+        "return_percent": -3.47,
+        "max_drawdown_percent": 7.2,
+        "by_source": {
+          "baseline": 1054,
+          "classifier": 385
+        }
+      },
+      "profitable_months": 6
+    }
+  ],
+  "selected_on_validation": {
+    "baseline_mode": "short_only",
+    "signal_quantile": "dynamic",
+    "classifier": {
+      "trades": 491,
+      "trades_per_day": 1.96,
+      "win_rate": 45.62,
+      "profit_factor": 1.142,
+      "average_realized_r": 0.0744,
+      "return_percent": 5.47,
+      "max_drawdown_percent": 5.28
+    },
+    "classifier_stress": {
+      "trades": 491,
+      "trades_per_day": 1.96,
+      "win_rate": 43.58,
+      "profit_factor": 1.035,
+      "average_realized_r": 0.021,
+      "return_percent": 1.4,
+      "max_drawdown_percent": 6.93
+    },
+    "ensemble": {
+      "trades": 1054,
+      "trades_per_day": 4.22,
+      "win_rate": 46.49,
+      "profit_factor": 1.106,
+      "average_realized_r": 0.0574,
+      "return_percent": 9.15,
+      "max_drawdown_percent": 3.2,
+      "by_source": {
+        "baseline": 626,
+        "classifier": 428
+      }
+    },
+    "ensemble_stress": {
+      "trades": 1055,
+      "trades_per_day": 4.22,
+      "win_rate": 45.02,
+      "profit_factor": 1.023,
+      "average_realized_r": 0.0145,
+      "return_percent": 2.0,
+      "max_drawdown_percent": 5.27,
+      "by_source": {
+        "baseline": 627,
+        "classifier": 428
+      }
+    },
+    "profitable_months": 8
+  },
+  "validation_passed": true,
+  "holdout_opened": true,
+  "final_holdout_once": {
+    "trades": 268,
+    "trades_per_day": 4.47,
+    "win_rate": 52.24,
+    "profit_factor": 1.159,
+    "average_realized_r": 0.0768,
+    "return_percent": 3.07,
+    "max_drawdown_percent": 3.22,
+    "by_source": {
+      "baseline": 150,
+      "classifier": 118
+    }
+  },
+  "final_holdout_stress": {
+    "trades": 268,
+    "trades_per_day": 4.47,
+    "win_rate": 48.88,
+    "profit_factor": 1.036,
+    "average_realized_r": 0.0197,
+    "return_percent": 0.73,
+    "max_drawdown_percent": 4.12,
+    "by_source": {
+      "baseline": 150,
+      "classifier": 118
+    }
+  },
+  "holdout_classifier": {
+    "trades": 124,
+    "trades_per_day": 2.07,
+    "win_rate": 52.42,
+    "profit_factor": 1.023,
+    "average_realized_r": 0.0117,
+    "return_percent": 0.2,
+    "max_drawdown_percent": 2.86
+  },
+  "holdout_classifier_stress": {
+    "trades": 124,
+    "trades_per_day": 2.07,
+    "win_rate": 47.58,
+    "profit_factor": 0.857,
+    "average_realized_r": -0.0723,
+    "return_percent": -1.36,
+    "max_drawdown_percent": 3.95
+  },
+  "holdout_months": [
+    {
+      "trades": 92,
+      "trades_per_day": 3.07,
+      "win_rate": 54.35,
+      "profit_factor": 1.337,
+      "net_pnl": 211.91
+    },
+    {
+      "trades": 176,
+      "trades_per_day": 5.87,
+      "win_rate": 51.14,
+      "profit_factor": 1.073,
+      "net_pnl": 95.4
+    }
+  ]
+}

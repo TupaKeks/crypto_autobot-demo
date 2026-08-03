@@ -9,7 +9,7 @@ User=ubuntu
 WorkingDirectory=/home/ubuntu
 Environment=PYTHONUNBUFFERED=1
 EnvironmentFile=/etc/crypto-autobot.env
-ExecStart=/usr/bin/python3 /home/ubuntu/crypto_autobot/bot.py --config /home/ubuntu/crypto_autobot/config.demo.example.json --enable-orders
+ExecStart=/usr/bin/python3 /home/ubuntu/crypto_autobot/bot.py --config /home/ubuntu/crypto_autobot/config.demo.asymmetric-15m.example.json --enable-orders
 Restart=always
 RestartSec=10
 NoNewPrivileges=true

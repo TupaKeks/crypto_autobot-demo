@@ -1,0 +1,266 @@
+{
+  "method": {
+    "model": "HistGradientBoostingRegressor",
+    "training": "90d fit + 30d threshold calibration + next 30d trade",
+    "features": "price, trend, volatility, RSI, ADX, volume, trade count, taker imbalance, BTC regime, calendar",
+    "trade": "next 15m open, RR 1:2, 1.5 ATR stop, max 16 bars",
+    "costs_bps": {
+      "fee_each_side": 5.0,
+      "slippage_each_side": 2.0
+    },
+    "symbols": [
+      "AAVEUSDT",
+      "ADAUSDT",
+      "APTUSDT",
+      "BTCUSDT",
+      "CRVUSDT",
+      "DOGEUSDT",
+      "ETHUSDT",
+      "FILUSDT",
+      "LINKUSDT",
+      "NEARUSDT",
+      "RENDERUSDT",
+      "SOLUSDT",
+      "TAOUSDT",
+      "XLMUSDT",
+      "XRPUSDT"
+    ]
+  },
+  "dates": {
+    "validation_start": "2025-09-26T19:45:00+00:00",
+    "holdout_start": "2026-06-03T19:45:00+00:00",
+    "holdout_end": "2026-08-02T19:45:00+00:00"
+  },
+  "validation_grid": [
+    {
+      "signal_quantile": 0.99,
+      "trades": 470,
+      "trades_per_day": 1.88,
+      "win_rate": 39.79,
+      "profit_factor": 0.872,
+      "average_realized_r": -0.0729,
+      "return_percent": -5.14,
+      "max_drawdown_percent": 9.29,
+      "disabled_checks": 11503
+    },
+    {
+      "signal_quantile": 0.995,
+      "trades": 315,
+      "trades_per_day": 1.26,
+      "win_rate": 40.95,
+      "profit_factor": 0.944,
+      "average_realized_r": -0.03,
+      "return_percent": -1.51,
+      "max_drawdown_percent": 6.44,
+      "disabled_checks": 11520
+    },
+    {
+      "signal_quantile": 0.9975,
+      "trades": 182,
+      "trades_per_day": 0.73,
+      "win_rate": 40.11,
+      "profit_factor": 0.833,
+      "average_realized_r": -0.096,
+      "return_percent": -2.64,
+      "max_drawdown_percent": 4.09,
+      "disabled_checks": 14400
+    }
+  ],
+  "validation_months": {
+    "0.99": [
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 137,
+        "trades_per_day": 4.57,
+        "win_rate": 40.15,
+        "profit_factor": 1.033,
+        "net_pnl": 37.04
+      },
+      {
+        "trades": 80,
+        "trades_per_day": 2.67,
+        "win_rate": 50.0,
+        "profit_factor": 1.626,
+        "net_pnl": 343.94
+      },
+      {
+        "trades": 78,
+        "trades_per_day": 2.6,
+        "win_rate": 28.21,
+        "profit_factor": 0.393,
+        "net_pnl": -505.46
+      },
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 115,
+        "trades_per_day": 3.83,
+        "win_rate": 37.39,
+        "profit_factor": 0.661,
+        "net_pnl": -348.07
+      },
+      {
+        "trades": 3,
+        "trades_per_day": 0.1,
+        "win_rate": 66.67,
+        "profit_factor": 2.23,
+        "net_pnl": 18.4
+      },
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 57,
+        "trades_per_day": 1.9,
+        "win_rate": 43.86,
+        "profit_factor": 0.87,
+        "net_pnl": -60.25
+      }
+    ],
+    "0.995": [
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 90,
+        "trades_per_day": 3.0,
+        "win_rate": 46.67,
+        "profit_factor": 1.375,
+        "net_pnl": 240.52
+      },
+      {
+        "trades": 68,
+        "trades_per_day": 2.27,
+        "win_rate": 42.65,
+        "profit_factor": 1.075,
+        "net_pnl": 43.55
+      },
+      {
+        "trades": 43,
+        "trades_per_day": 1.43,
+        "win_rate": 39.53,
+        "profit_factor": 0.652,
+        "net_pnl": -130.53
+      },
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 66,
+        "trades_per_day": 2.2,
+        "win_rate": 31.82,
+        "profit_factor": 0.576,
+        "net_pnl": -291.86
+      },
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 48,
+        "trades_per_day": 1.6,
+        "win_rate": 41.67,
+        "profit_factor": 0.968,
+        "net_pnl": -12.71
+      }
+    ],
+    "0.9975": [
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 52,
+        "trades_per_day": 1.73,
+        "win_rate": 40.38,
+        "profit_factor": 0.764,
+        "net_pnl": -102.36
+      },
+      {
+        "trades": 49,
+        "trades_per_day": 1.63,
+        "win_rate": 44.9,
+        "profit_factor": 1.261,
+        "net_pnl": 100.51
+      },
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 42,
+        "trades_per_day": 1.4,
+        "win_rate": 33.33,
+        "profit_factor": 0.541,
+        "net_pnl": -190.36
+      },
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 0,
+        "trades_per_day": 0.0,
+        "win_rate": 0.0,
+        "profit_factor": null,
+        "net_pnl": 0
+      },
+      {
+        "trades": 39,
+        "trades_per_day": 1.3,
+        "win_rate": 41.03,
+        "profit_factor": 0.797,
+        "net_pnl": -71.82
+      }
+    ]
+  }
+}

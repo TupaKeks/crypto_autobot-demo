@@ -1,0 +1,261 @@
+{
+  "status": "binance_demo_candidate_not_live",
+  "selection_frozen_before_holdout": true,
+  "timeframe": "15m",
+  "symbols": [
+    "AAVEUSDT",
+    "ADAUSDT",
+    "APTUSDT",
+    "CRVUSDT",
+    "ETHUSDT",
+    "FILUSDT",
+    "NEARUSDT",
+    "RENDERUSDT",
+    "TAOUSDT",
+    "XLMUSDT"
+  ],
+  "periods_utc": {
+    "validation": "2025-09-06T19:49:34.645000+00:00 to 2026-06-03T19:49:34.645000+00:00",
+    "final_holdout": "2026-06-03T19:49:34.645000+00:00 to 2026-08-02T19:49:34.645000+00:00"
+  },
+  "execution_assumptions": {
+    "entry": "post-only limit retrace at 0.1 ATR, expires after one bar",
+    "target": "resting post-only reduce-only limit",
+    "maker_fee_bps": 2.0,
+    "stop_and_time_exit_taker_fee_bps": 5.0,
+    "stop_and_time_exit_slippage_bps": 2.0,
+    "same_candle_exit": "stop_first"
+  },
+  "warning": "Historical results do not guarantee profit. The last holdout month lost money and the adverse-cost stress test failed. Use Binance Demo only.",
+  "strategy": {
+    "type": "intraday_regime_pullback",
+    "enabled": true,
+    "entry_order_type": "limit_retrace",
+    "entry_offset_atr": 0.1,
+    "entry_expiry_bars": 1,
+    "entry_fast_ema": 9,
+    "entry_slow_ema": 21,
+    "regime_fast_ema": 48,
+    "regime_slow_ema": 144,
+    "regime_slope_bars": 12,
+    "min_regime_slope_percent": 0.02,
+    "pullback_lookback": 12,
+    "pullback_tolerance_atr": 0.15,
+    "long_pullback_rsi": 40.0,
+    "short_pullback_rsi": 60.0,
+    "long_trigger_rsi": 45.0,
+    "short_trigger_rsi": 55.0,
+    "max_entry_extension_atr": 1.0,
+    "min_confirmation_body_ratio": 0.1,
+    "atr_length": 14,
+    "adx_length": 14,
+    "min_adx": 12.0,
+    "rsi_length": 14,
+    "long_rsi_min": 20.0,
+    "long_rsi_max": 80.0,
+    "short_rsi_min": 20.0,
+    "short_rsi_max": 80.0,
+    "volume_sma_length": 20,
+    "min_volume_factor": 0.7,
+    "min_atr_percent": 0.04,
+    "max_atr_percent": 3.0,
+    "band_length": 20,
+    "breakout_lookback": 20,
+    "stop_atr": 1.8,
+    "target_atr": 2.8,
+    "max_holding_bars": 24,
+    "cooldown_bars": 3,
+    "allow_shorts": true,
+    "trail_after_r": 99.0,
+    "trail_atr": 1.5,
+    "target_order_type": "limit"
+  },
+  "account": {
+    "initial_balance": 10000.0,
+    "risk_per_trade_percent": 0.15,
+    "max_open_positions": 4,
+    "max_daily_trades": 12,
+    "max_daily_loss_percent": 1.2,
+    "same_candle_exit": "stop_first"
+  },
+  "validation": {
+    "trades": 1273,
+    "trades_per_day": 4.71,
+    "win_rate": 45.64,
+    "profit_factor": 1.065,
+    "average_realized_r": 0.0369,
+    "return_percent": 6.9,
+    "max_drawdown_percent": 9.7
+  },
+  "validation_months": [
+    {
+      "start": "2025-09-06",
+      "trades": 127,
+      "tpd": 4.23,
+      "wr": 41.73,
+      "pf": 0.922,
+      "net": -91.5
+    },
+    {
+      "start": "2025-10-06",
+      "trades": 159,
+      "tpd": 5.3,
+      "wr": 53.46,
+      "pf": 1.462,
+      "net": 540.19
+    },
+    {
+      "start": "2025-11-05",
+      "trades": 145,
+      "tpd": 4.83,
+      "wr": 39.31,
+      "pf": 0.792,
+      "net": -283.49
+    },
+    {
+      "start": "2025-12-05",
+      "trades": 146,
+      "tpd": 4.87,
+      "wr": 39.73,
+      "pf": 0.763,
+      "net": -309.55
+    },
+    {
+      "start": "2026-01-04",
+      "trades": 130,
+      "tpd": 4.33,
+      "wr": 46.15,
+      "pf": 1.077,
+      "net": 79.91
+    },
+    {
+      "start": "2026-02-03",
+      "trades": 139,
+      "tpd": 4.63,
+      "wr": 43.88,
+      "pf": 1.109,
+      "net": 121.16
+    },
+    {
+      "start": "2026-03-05",
+      "trades": 155,
+      "tpd": 5.17,
+      "wr": 51.61,
+      "pf": 1.368,
+      "net": 425.78
+    },
+    {
+      "start": "2026-04-04",
+      "trades": 137,
+      "tpd": 4.57,
+      "wr": 40.88,
+      "pf": 0.829,
+      "net": -218.6
+    },
+    {
+      "start": "2026-05-04",
+      "trades": 135,
+      "tpd": 4.5,
+      "wr": 52.59,
+      "pf": 1.406,
+      "net": 426.26
+    }
+  ],
+  "validation_stress_market_target": {
+    "trades": 1273,
+    "trades_per_day": 4.71,
+    "win_rate": 45.64,
+    "profit_factor": 1.029,
+    "average_realized_r": 0.0177,
+    "return_percent": 3.07,
+    "max_drawdown_percent": 10.09
+  },
+  "validation_stress_maker4_slippage3": {
+    "trades": 1273,
+    "trades_per_day": 4.71,
+    "win_rate": 44.85,
+    "profit_factor": 0.989,
+    "average_realized_r": -0.0044,
+    "return_percent": -1.21,
+    "max_drawdown_percent": 10.68
+  },
+  "final_holdout_once": {
+    "trades": 285,
+    "trades_per_day": 4.75,
+    "win_rate": 50.53,
+    "profit_factor": 1.22,
+    "average_realized_r": 0.1134,
+    "return_percent": 4.89,
+    "max_drawdown_percent": 2.81
+  },
+  "holdout_months": [
+    {
+      "start": "2026-06-03",
+      "trades": 156,
+      "tpd": 5.2,
+      "wr": 55.77,
+      "pf": 1.504,
+      "net": 543.34
+    },
+    {
+      "start": "2026-07-03",
+      "trades": 129,
+      "tpd": 4.3,
+      "wr": 44.19,
+      "pf": 0.953,
+      "net": -54.15
+    }
+  ],
+  "by_symbol_holdout": {
+    "FILUSDT": {
+      "trades": 32,
+      "net_pnl": -44.76,
+      "win_rate": 40.62
+    },
+    "NEARUSDT": {
+      "trades": 35,
+      "net_pnl": -167.79,
+      "win_rate": 34.29
+    },
+    "RENDERUSDT": {
+      "trades": 25,
+      "net_pnl": -153.91,
+      "win_rate": 32.0
+    },
+    "AAVEUSDT": {
+      "trades": 33,
+      "net_pnl": 92.42,
+      "win_rate": 51.52
+    },
+    "CRVUSDT": {
+      "trades": 30,
+      "net_pnl": 101.0,
+      "win_rate": 53.33
+    },
+    "APTUSDT": {
+      "trades": 27,
+      "net_pnl": 192.8,
+      "win_rate": 59.26
+    },
+    "TAOUSDT": {
+      "trades": 22,
+      "net_pnl": 203.11,
+      "win_rate": 72.73
+    },
+    "ADAUSDT": {
+      "trades": 33,
+      "net_pnl": 121.39,
+      "win_rate": 60.61
+    },
+    "XLMUSDT": {
+      "trades": 24,
+      "net_pnl": -5.57,
+      "win_rate": 50.0
+    },
+    "ETHUSDT": {
+      "trades": 24,
+      "net_pnl": 150.5,
+      "win_rate": 58.33
+    }
+  }
+}

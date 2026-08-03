@@ -1,0 +1,1170 @@
+{
+  "method": {
+    "description": "Monthly positive-expectancy symbol gate using only earlier trades",
+    "grid": {
+      "selection_days": [
+        60,
+        90,
+        120
+      ],
+      "universe_size": [
+        8,
+        12,
+        16
+      ]
+    },
+    "minimum_calibration_trades": 8,
+    "score": "sum(realized_r) / (trade_count + 20), require score > 0",
+    "holdout_used_in_selection": false
+  },
+  "candidates": [
+    {
+      "selection_days": 60,
+      "universe_size": 8,
+      "validation": {
+        "trades": 918,
+        "trades_per_day": 3.4,
+        "win_rate": 42.37,
+        "profit_factor": 0.887,
+        "average_realized_r": -0.0636,
+        "return_percent": -8.6,
+        "max_drawdown_percent": 11.3
+      },
+      "profitable_months": 2,
+      "months": [
+        {
+          "start_utc": "2025-09-06T19:45:00+00:00",
+          "end_utc": "2025-10-06T19:45:00+00:00",
+          "trades": 108,
+          "trades_per_day": 3.6,
+          "win_rate": 45.37,
+          "profit_factor": 0.979,
+          "average_realized_r": -0.0103,
+          "net_pnl": -19.51
+        },
+        {
+          "start_utc": "2025-10-06T19:45:00+00:00",
+          "end_utc": "2025-11-05T19:45:00+00:00",
+          "trades": 112,
+          "trades_per_day": 3.73,
+          "win_rate": 44.64,
+          "profit_factor": 0.917,
+          "average_realized_r": -0.0465,
+          "net_pnl": -81.53
+        },
+        {
+          "start_utc": "2025-11-05T19:45:00+00:00",
+          "end_utc": "2025-12-05T19:45:00+00:00",
+          "trades": 116,
+          "trades_per_day": 3.87,
+          "win_rate": 38.79,
+          "profit_factor": 0.734,
+          "average_realized_r": -0.1634,
+          "net_pnl": -279.98
+        },
+        {
+          "start_utc": "2025-12-05T19:45:00+00:00",
+          "end_utc": "2026-01-04T19:45:00+00:00",
+          "trades": 85,
+          "trades_per_day": 2.83,
+          "win_rate": 40.0,
+          "profit_factor": 0.673,
+          "average_realized_r": -0.1922,
+          "net_pnl": -234.2
+        },
+        {
+          "start_utc": "2026-01-04T19:45:00+00:00",
+          "end_utc": "2026-02-03T19:45:00+00:00",
+          "trades": 61,
+          "trades_per_day": 2.03,
+          "win_rate": 32.79,
+          "profit_factor": 0.526,
+          "average_realized_r": -0.3319,
+          "net_pnl": -281.6
+        },
+        {
+          "start_utc": "2026-02-03T19:45:00+00:00",
+          "end_utc": "2026-03-05T19:45:00+00:00",
+          "trades": 93,
+          "trades_per_day": 3.1,
+          "win_rate": 38.71,
+          "profit_factor": 0.93,
+          "average_realized_r": -0.0377,
+          "net_pnl": -49.79
+        },
+        {
+          "start_utc": "2026-03-05T19:45:00+00:00",
+          "end_utc": "2026-04-04T19:45:00+00:00",
+          "trades": 121,
+          "trades_per_day": 4.03,
+          "win_rate": 49.59,
+          "profit_factor": 1.296,
+          "average_realized_r": 0.1483,
+          "net_pnl": 243.99
+        },
+        {
+          "start_utc": "2026-04-04T19:45:00+00:00",
+          "end_utc": "2026-05-04T19:45:00+00:00",
+          "trades": 108,
+          "trades_per_day": 3.6,
+          "win_rate": 39.81,
+          "profit_factor": 0.813,
+          "average_realized_r": -0.1163,
+          "net_pnl": -176.06
+        },
+        {
+          "start_utc": "2026-05-04T19:45:00+00:00",
+          "end_utc": "2026-06-03T19:45:00+00:00",
+          "trades": 114,
+          "trades_per_day": 3.8,
+          "win_rate": 45.61,
+          "profit_factor": 1.021,
+          "average_realized_r": 0.0137,
+          "net_pnl": 18.67
+        }
+      ]
+    },
+    {
+      "selection_days": 60,
+      "universe_size": 12,
+      "validation": {
+        "trades": 1017,
+        "trades_per_day": 3.77,
+        "win_rate": 41.59,
+        "profit_factor": 0.855,
+        "average_realized_r": -0.083,
+        "return_percent": -12.12,
+        "max_drawdown_percent": 15.13
+      },
+      "profitable_months": 2,
+      "months": [
+        {
+          "start_utc": "2025-09-06T19:45:00+00:00",
+          "end_utc": "2025-10-06T19:45:00+00:00",
+          "trades": 149,
+          "trades_per_day": 4.97,
+          "win_rate": 41.61,
+          "profit_factor": 0.81,
+          "average_realized_r": -0.113,
+          "net_pnl": -253.28
+        },
+        {
+          "start_utc": "2025-10-06T19:45:00+00:00",
+          "end_utc": "2025-11-05T19:45:00+00:00",
+          "trades": 124,
+          "trades_per_day": 4.13,
+          "win_rate": 44.35,
+          "profit_factor": 0.916,
+          "average_realized_r": -0.0468,
+          "net_pnl": -88.74
+        },
+        {
+          "start_utc": "2025-11-05T19:45:00+00:00",
+          "end_utc": "2025-12-05T19:45:00+00:00",
+          "trades": 156,
+          "trades_per_day": 5.2,
+          "win_rate": 37.82,
+          "profit_factor": 0.727,
+          "average_realized_r": -0.173,
+          "net_pnl": -387.19
+        },
+        {
+          "start_utc": "2025-12-05T19:45:00+00:00",
+          "end_utc": "2026-01-04T19:45:00+00:00",
+          "trades": 85,
+          "trades_per_day": 2.83,
+          "win_rate": 40.0,
+          "profit_factor": 0.673,
+          "average_realized_r": -0.1922,
+          "net_pnl": -225.72
+        },
+        {
+          "start_utc": "2026-01-04T19:45:00+00:00",
+          "end_utc": "2026-02-03T19:45:00+00:00",
+          "trades": 61,
+          "trades_per_day": 2.03,
+          "win_rate": 32.79,
+          "profit_factor": 0.526,
+          "average_realized_r": -0.3319,
+          "net_pnl": -271.41
+        },
+        {
+          "start_utc": "2026-02-03T19:45:00+00:00",
+          "end_utc": "2026-03-05T19:45:00+00:00",
+          "trades": 93,
+          "trades_per_day": 3.1,
+          "win_rate": 38.71,
+          "profit_factor": 0.93,
+          "average_realized_r": -0.0377,
+          "net_pnl": -47.99
+        },
+        {
+          "start_utc": "2026-03-05T19:45:00+00:00",
+          "end_utc": "2026-04-04T19:45:00+00:00",
+          "trades": 121,
+          "trades_per_day": 4.03,
+          "win_rate": 49.59,
+          "profit_factor": 1.296,
+          "average_realized_r": 0.1483,
+          "net_pnl": 235.16
+        },
+        {
+          "start_utc": "2026-04-04T19:45:00+00:00",
+          "end_utc": "2026-05-04T19:45:00+00:00",
+          "trades": 114,
+          "trades_per_day": 3.8,
+          "win_rate": 39.47,
+          "profit_factor": 0.801,
+          "average_realized_r": -0.1242,
+          "net_pnl": -191.09
+        },
+        {
+          "start_utc": "2026-05-04T19:45:00+00:00",
+          "end_utc": "2026-06-03T19:45:00+00:00",
+          "trades": 114,
+          "trades_per_day": 3.8,
+          "win_rate": 45.61,
+          "profit_factor": 1.021,
+          "average_realized_r": 0.0137,
+          "net_pnl": 17.95
+        }
+      ]
+    },
+    {
+      "selection_days": 60,
+      "universe_size": 16,
+      "validation": {
+        "trades": 1063,
+        "trades_per_day": 3.94,
+        "win_rate": 41.11,
+        "profit_factor": 0.84,
+        "average_realized_r": -0.0924,
+        "return_percent": -13.94,
+        "max_drawdown_percent": 17.1
+      },
+      "profitable_months": 2,
+      "months": [
+        {
+          "start_utc": "2025-09-06T19:45:00+00:00",
+          "end_utc": "2025-10-06T19:45:00+00:00",
+          "trades": 178,
+          "trades_per_day": 5.93,
+          "win_rate": 40.45,
+          "profit_factor": 0.799,
+          "average_realized_r": -0.1213,
+          "net_pnl": -323.67
+        },
+        {
+          "start_utc": "2025-10-06T19:45:00+00:00",
+          "end_utc": "2025-11-05T19:45:00+00:00",
+          "trades": 124,
+          "trades_per_day": 4.13,
+          "win_rate": 44.35,
+          "profit_factor": 0.916,
+          "average_realized_r": -0.0468,
+          "net_pnl": -88.1
+        },
+        {
+          "start_utc": "2025-11-05T19:45:00+00:00",
+          "end_utc": "2025-12-05T19:45:00+00:00",
+          "trades": 173,
+          "trades_per_day": 5.77,
+          "win_rate": 36.42,
+          "profit_factor": 0.681,
+          "average_realized_r": -0.2086,
+          "net_pnl": -509.44
+        },
+        {
+          "start_utc": "2025-12-05T19:45:00+00:00",
+          "end_utc": "2026-01-04T19:45:00+00:00",
+          "trades": 85,
+          "trades_per_day": 2.83,
+          "win_rate": 40.0,
+          "profit_factor": 0.673,
+          "average_realized_r": -0.1922,
+          "net_pnl": -221.05
+        },
+        {
+          "start_utc": "2026-01-04T19:45:00+00:00",
+          "end_utc": "2026-02-03T19:45:00+00:00",
+          "trades": 61,
+          "trades_per_day": 2.03,
+          "win_rate": 32.79,
+          "profit_factor": 0.526,
+          "average_realized_r": -0.3319,
+          "net_pnl": -265.79
+        },
+        {
+          "start_utc": "2026-02-03T19:45:00+00:00",
+          "end_utc": "2026-03-05T19:45:00+00:00",
+          "trades": 93,
+          "trades_per_day": 3.1,
+          "win_rate": 38.71,
+          "profit_factor": 0.93,
+          "average_realized_r": -0.0377,
+          "net_pnl": -47.0
+        },
+        {
+          "start_utc": "2026-03-05T19:45:00+00:00",
+          "end_utc": "2026-04-04T19:45:00+00:00",
+          "trades": 121,
+          "trades_per_day": 4.03,
+          "win_rate": 49.59,
+          "profit_factor": 1.296,
+          "average_realized_r": 0.1483,
+          "net_pnl": 230.28
+        },
+        {
+          "start_utc": "2026-04-04T19:45:00+00:00",
+          "end_utc": "2026-05-04T19:45:00+00:00",
+          "trades": 114,
+          "trades_per_day": 3.8,
+          "win_rate": 39.47,
+          "profit_factor": 0.801,
+          "average_realized_r": -0.1242,
+          "net_pnl": -187.13
+        },
+        {
+          "start_utc": "2026-05-04T19:45:00+00:00",
+          "end_utc": "2026-06-03T19:45:00+00:00",
+          "trades": 114,
+          "trades_per_day": 3.8,
+          "win_rate": 45.61,
+          "profit_factor": 1.021,
+          "average_realized_r": 0.0137,
+          "net_pnl": 17.58
+        }
+      ]
+    },
+    {
+      "selection_days": 90,
+      "universe_size": 8,
+      "validation": {
+        "trades": 856,
+        "trades_per_day": 3.17,
+        "win_rate": 41.0,
+        "profit_factor": 0.837,
+        "average_realized_r": -0.0937,
+        "return_percent": -11.53,
+        "max_drawdown_percent": 14.7
+      },
+      "profitable_months": 2,
+      "months": [
+        {
+          "start_utc": "2025-09-06T19:45:00+00:00",
+          "end_utc": "2025-10-06T19:45:00+00:00",
+          "trades": 102,
+          "trades_per_day": 3.4,
+          "win_rate": 44.12,
+          "profit_factor": 0.892,
+          "average_realized_r": -0.0617,
+          "net_pnl": -96.51
+        },
+        {
+          "start_utc": "2025-10-06T19:45:00+00:00",
+          "end_utc": "2025-11-05T19:45:00+00:00",
+          "trades": 113,
+          "trades_per_day": 3.77,
+          "win_rate": 37.17,
+          "profit_factor": 0.673,
+          "average_realized_r": -0.2202,
+          "net_pnl": -367.04
+        },
+        {
+          "start_utc": "2025-11-05T19:45:00+00:00",
+          "end_utc": "2025-12-05T19:45:00+00:00",
+          "trades": 128,
+          "trades_per_day": 4.27,
+          "win_rate": 38.28,
+          "profit_factor": 0.788,
+          "average_realized_r": -0.1283,
+          "net_pnl": -235.19
+        },
+        {
+          "start_utc": "2025-12-05T19:45:00+00:00",
+          "end_utc": "2026-01-04T19:45:00+00:00",
+          "trades": 108,
+          "trades_per_day": 3.6,
+          "win_rate": 35.19,
+          "profit_factor": 0.586,
+          "average_realized_r": -0.2607,
+          "net_pnl": -386.29
+        },
+        {
+          "start_utc": "2026-01-04T19:45:00+00:00",
+          "end_utc": "2026-02-03T19:45:00+00:00",
+          "trades": 93,
+          "trades_per_day": 3.1,
+          "win_rate": 43.01,
+          "profit_factor": 0.942,
+          "average_realized_r": -0.0312,
+          "net_pnl": -40.58
+        },
+        {
+          "start_utc": "2026-02-03T19:45:00+00:00",
+          "end_utc": "2026-03-05T19:45:00+00:00",
+          "trades": 32,
+          "trades_per_day": 1.07,
+          "win_rate": 34.38,
+          "profit_factor": 0.64,
+          "average_realized_r": -0.2067,
+          "net_pnl": -88.06
+        },
+        {
+          "start_utc": "2026-03-05T19:45:00+00:00",
+          "end_utc": "2026-04-04T19:45:00+00:00",
+          "trades": 83,
+          "trades_per_day": 2.77,
+          "win_rate": 44.58,
+          "profit_factor": 1.04,
+          "average_realized_r": 0.0236,
+          "net_pnl": 24.1
+        },
+        {
+          "start_utc": "2026-04-04T19:45:00+00:00",
+          "end_utc": "2026-05-04T19:45:00+00:00",
+          "trades": 101,
+          "trades_per_day": 3.37,
+          "win_rate": 42.57,
+          "profit_factor": 0.905,
+          "average_realized_r": -0.0551,
+          "net_pnl": -75.48
+        },
+        {
+          "start_utc": "2026-05-04T19:45:00+00:00",
+          "end_utc": "2026-06-03T19:45:00+00:00",
+          "trades": 96,
+          "trades_per_day": 3.2,
+          "win_rate": 47.92,
+          "profit_factor": 1.17,
+          "average_realized_r": 0.0904,
+          "net_pnl": 112.41
+        }
+      ]
+    },
+    {
+      "selection_days": 90,
+      "universe_size": 12,
+      "validation": {
+        "trades": 953,
+        "trades_per_day": 3.53,
+        "win_rate": 40.08,
+        "profit_factor": 0.793,
+        "average_realized_r": -0.1209,
+        "return_percent": -16.07,
+        "max_drawdown_percent": 19.74
+      },
+      "profitable_months": 2,
+      "months": [
+        {
+          "start_utc": "2025-09-06T19:45:00+00:00",
+          "end_utc": "2025-10-06T19:45:00+00:00",
+          "trades": 132,
+          "trades_per_day": 4.4,
+          "win_rate": 40.15,
+          "profit_factor": 0.733,
+          "average_realized_r": -0.163,
+          "net_pnl": -321.16
+        },
+        {
+          "start_utc": "2025-10-06T19:45:00+00:00",
+          "end_utc": "2025-11-05T19:45:00+00:00",
+          "trades": 135,
+          "trades_per_day": 4.5,
+          "win_rate": 41.48,
+          "profit_factor": 0.798,
+          "average_realized_r": -0.1235,
+          "net_pnl": -244.01
+        },
+        {
+          "start_utc": "2025-11-05T19:45:00+00:00",
+          "end_utc": "2025-12-05T19:45:00+00:00",
+          "trades": 173,
+          "trades_per_day": 5.77,
+          "win_rate": 33.53,
+          "profit_factor": 0.624,
+          "average_realized_r": -0.2566,
+          "net_pnl": -611.49
+        },
+        {
+          "start_utc": "2025-12-05T19:45:00+00:00",
+          "end_utc": "2026-01-04T19:45:00+00:00",
+          "trades": 108,
+          "trades_per_day": 3.6,
+          "win_rate": 35.19,
+          "profit_factor": 0.586,
+          "average_realized_r": -0.2607,
+          "net_pnl": -366.44
+        },
+        {
+          "start_utc": "2026-01-04T19:45:00+00:00",
+          "end_utc": "2026-02-03T19:45:00+00:00",
+          "trades": 93,
+          "trades_per_day": 3.1,
+          "win_rate": 43.01,
+          "profit_factor": 0.942,
+          "average_realized_r": -0.0312,
+          "net_pnl": -38.5
+        },
+        {
+          "start_utc": "2026-02-03T19:45:00+00:00",
+          "end_utc": "2026-03-05T19:45:00+00:00",
+          "trades": 32,
+          "trades_per_day": 1.07,
+          "win_rate": 34.38,
+          "profit_factor": 0.64,
+          "average_realized_r": -0.2067,
+          "net_pnl": -83.54
+        },
+        {
+          "start_utc": "2026-03-05T19:45:00+00:00",
+          "end_utc": "2026-04-04T19:45:00+00:00",
+          "trades": 83,
+          "trades_per_day": 2.77,
+          "win_rate": 44.58,
+          "profit_factor": 1.04,
+          "average_realized_r": 0.0236,
+          "net_pnl": 22.86
+        },
+        {
+          "start_utc": "2026-04-04T19:45:00+00:00",
+          "end_utc": "2026-05-04T19:45:00+00:00",
+          "trades": 101,
+          "trades_per_day": 3.37,
+          "win_rate": 42.57,
+          "profit_factor": 0.905,
+          "average_realized_r": -0.0551,
+          "net_pnl": -71.6
+        },
+        {
+          "start_utc": "2026-05-04T19:45:00+00:00",
+          "end_utc": "2026-06-03T19:45:00+00:00",
+          "trades": 96,
+          "trades_per_day": 3.2,
+          "win_rate": 47.92,
+          "profit_factor": 1.17,
+          "average_realized_r": 0.0904,
+          "net_pnl": 106.63
+        }
+      ]
+    },
+    {
+      "selection_days": 90,
+      "universe_size": 16,
+      "validation": {
+        "trades": 953,
+        "trades_per_day": 3.53,
+        "win_rate": 40.08,
+        "profit_factor": 0.793,
+        "average_realized_r": -0.1209,
+        "return_percent": -16.07,
+        "max_drawdown_percent": 19.74
+      },
+      "profitable_months": 2,
+      "months": [
+        {
+          "start_utc": "2025-09-06T19:45:00+00:00",
+          "end_utc": "2025-10-06T19:45:00+00:00",
+          "trades": 132,
+          "trades_per_day": 4.4,
+          "win_rate": 40.15,
+          "profit_factor": 0.733,
+          "average_realized_r": -0.163,
+          "net_pnl": -321.16
+        },
+        {
+          "start_utc": "2025-10-06T19:45:00+00:00",
+          "end_utc": "2025-11-05T19:45:00+00:00",
+          "trades": 135,
+          "trades_per_day": 4.5,
+          "win_rate": 41.48,
+          "profit_factor": 0.798,
+          "average_realized_r": -0.1235,
+          "net_pnl": -244.01
+        },
+        {
+          "start_utc": "2025-11-05T19:45:00+00:00",
+          "end_utc": "2025-12-05T19:45:00+00:00",
+          "trades": 173,
+          "trades_per_day": 5.77,
+          "win_rate": 33.53,
+          "profit_factor": 0.624,
+          "average_realized_r": -0.2566,
+          "net_pnl": -611.49
+        },
+        {
+          "start_utc": "2025-12-05T19:45:00+00:00",
+          "end_utc": "2026-01-04T19:45:00+00:00",
+          "trades": 108,
+          "trades_per_day": 3.6,
+          "win_rate": 35.19,
+          "profit_factor": 0.586,
+          "average_realized_r": -0.2607,
+          "net_pnl": -366.44
+        },
+        {
+          "start_utc": "2026-01-04T19:45:00+00:00",
+          "end_utc": "2026-02-03T19:45:00+00:00",
+          "trades": 93,
+          "trades_per_day": 3.1,
+          "win_rate": 43.01,
+          "profit_factor": 0.942,
+          "average_realized_r": -0.0312,
+          "net_pnl": -38.5
+        },
+        {
+          "start_utc": "2026-02-03T19:45:00+00:00",
+          "end_utc": "2026-03-05T19:45:00+00:00",
+          "trades": 32,
+          "trades_per_day": 1.07,
+          "win_rate": 34.38,
+          "profit_factor": 0.64,
+          "average_realized_r": -0.2067,
+          "net_pnl": -83.54
+        },
+        {
+          "start_utc": "2026-03-05T19:45:00+00:00",
+          "end_utc": "2026-04-04T19:45:00+00:00",
+          "trades": 83,
+          "trades_per_day": 2.77,
+          "win_rate": 44.58,
+          "profit_factor": 1.04,
+          "average_realized_r": 0.0236,
+          "net_pnl": 22.86
+        },
+        {
+          "start_utc": "2026-04-04T19:45:00+00:00",
+          "end_utc": "2026-05-04T19:45:00+00:00",
+          "trades": 101,
+          "trades_per_day": 3.37,
+          "win_rate": 42.57,
+          "profit_factor": 0.905,
+          "average_realized_r": -0.0551,
+          "net_pnl": -71.6
+        },
+        {
+          "start_utc": "2026-05-04T19:45:00+00:00",
+          "end_utc": "2026-06-03T19:45:00+00:00",
+          "trades": 96,
+          "trades_per_day": 3.2,
+          "win_rate": 47.92,
+          "profit_factor": 1.17,
+          "average_realized_r": 0.0904,
+          "net_pnl": 106.63
+        }
+      ]
+    },
+    {
+      "selection_days": 120,
+      "universe_size": 8,
+      "validation": {
+        "trades": 847,
+        "trades_per_day": 3.14,
+        "win_rate": 40.73,
+        "profit_factor": 0.819,
+        "average_realized_r": -0.106,
+        "return_percent": -12.79,
+        "max_drawdown_percent": 16.34
+      },
+      "profitable_months": 2,
+      "months": [
+        {
+          "start_utc": "2025-09-06T19:45:00+00:00",
+          "end_utc": "2025-10-06T19:45:00+00:00",
+          "trades": 102,
+          "trades_per_day": 3.4,
+          "win_rate": 44.12,
+          "profit_factor": 0.892,
+          "average_realized_r": -0.0617,
+          "net_pnl": -96.51
+        },
+        {
+          "start_utc": "2025-10-06T19:45:00+00:00",
+          "end_utc": "2025-11-05T19:45:00+00:00",
+          "trades": 116,
+          "trades_per_day": 3.87,
+          "win_rate": 43.97,
+          "profit_factor": 0.81,
+          "average_realized_r": -0.1113,
+          "net_pnl": -194.67
+        },
+        {
+          "start_utc": "2025-11-05T19:45:00+00:00",
+          "end_utc": "2025-12-05T19:45:00+00:00",
+          "trades": 129,
+          "trades_per_day": 4.3,
+          "win_rate": 32.56,
+          "profit_factor": 0.593,
+          "average_realized_r": -0.2871,
+          "net_pnl": -527.27
+        },
+        {
+          "start_utc": "2025-12-05T19:45:00+00:00",
+          "end_utc": "2026-01-04T19:45:00+00:00",
+          "trades": 83,
+          "trades_per_day": 2.77,
+          "win_rate": 32.53,
+          "profit_factor": 0.562,
+          "average_realized_r": -0.2904,
+          "net_pnl": -327.2
+        },
+        {
+          "start_utc": "2026-01-04T19:45:00+00:00",
+          "end_utc": "2026-02-03T19:45:00+00:00",
+          "trades": 110,
+          "trades_per_day": 3.67,
+          "win_rate": 42.73,
+          "profit_factor": 0.897,
+          "average_realized_r": -0.0567,
+          "net_pnl": -84.73
+        },
+        {
+          "start_utc": "2026-02-03T19:45:00+00:00",
+          "end_utc": "2026-03-05T19:45:00+00:00",
+          "trades": 113,
+          "trades_per_day": 3.77,
+          "win_rate": 39.82,
+          "profit_factor": 0.871,
+          "average_realized_r": -0.0739,
+          "net_pnl": -111.61
+        },
+        {
+          "start_utc": "2026-03-05T19:45:00+00:00",
+          "end_utc": "2026-04-04T19:45:00+00:00",
+          "trades": 35,
+          "trades_per_day": 1.17,
+          "win_rate": 45.71,
+          "profit_factor": 1.099,
+          "average_realized_r": 0.0537,
+          "net_pnl": 23.92
+        },
+        {
+          "start_utc": "2026-04-04T19:45:00+00:00",
+          "end_utc": "2026-05-04T19:45:00+00:00",
+          "trades": 72,
+          "trades_per_day": 2.4,
+          "win_rate": 38.89,
+          "profit_factor": 0.764,
+          "average_realized_r": -0.1529,
+          "net_pnl": -143.58
+        },
+        {
+          "start_utc": "2026-05-04T19:45:00+00:00",
+          "end_utc": "2026-06-03T19:45:00+00:00",
+          "trades": 87,
+          "trades_per_day": 2.9,
+          "win_rate": 50.57,
+          "profit_factor": 1.329,
+          "average_realized_r": 0.164,
+          "net_pnl": 183.0
+        }
+      ]
+    },
+    {
+      "selection_days": 120,
+      "universe_size": 12,
+      "validation": {
+        "trades": 915,
+        "trades_per_day": 3.39,
+        "win_rate": 39.78,
+        "profit_factor": 0.78,
+        "average_realized_r": -0.1301,
+        "return_percent": -16.56,
+        "max_drawdown_percent": 20.61
+      },
+      "profitable_months": 2,
+      "months": [
+        {
+          "start_utc": "2025-09-06T19:45:00+00:00",
+          "end_utc": "2025-10-06T19:45:00+00:00",
+          "trades": 132,
+          "trades_per_day": 4.4,
+          "win_rate": 40.15,
+          "profit_factor": 0.733,
+          "average_realized_r": -0.163,
+          "net_pnl": -321.16
+        },
+        {
+          "start_utc": "2025-10-06T19:45:00+00:00",
+          "end_utc": "2025-11-05T19:45:00+00:00",
+          "trades": 116,
+          "trades_per_day": 3.87,
+          "win_rate": 43.97,
+          "profit_factor": 0.81,
+          "average_realized_r": -0.1113,
+          "net_pnl": -190.26
+        },
+        {
+          "start_utc": "2025-11-05T19:45:00+00:00",
+          "end_utc": "2025-12-05T19:45:00+00:00",
+          "trades": 167,
+          "trades_per_day": 5.57,
+          "win_rate": 31.74,
+          "profit_factor": 0.567,
+          "average_realized_r": -0.306,
+          "net_pnl": -703.9
+        },
+        {
+          "start_utc": "2025-12-05T19:45:00+00:00",
+          "end_utc": "2026-01-04T19:45:00+00:00",
+          "trades": 83,
+          "trades_per_day": 2.77,
+          "win_rate": 32.53,
+          "profit_factor": 0.562,
+          "average_realized_r": -0.2904,
+          "net_pnl": -313.06
+        },
+        {
+          "start_utc": "2026-01-04T19:45:00+00:00",
+          "end_utc": "2026-02-03T19:45:00+00:00",
+          "trades": 110,
+          "trades_per_day": 3.67,
+          "win_rate": 42.73,
+          "profit_factor": 0.897,
+          "average_realized_r": -0.0567,
+          "net_pnl": -81.07
+        },
+        {
+          "start_utc": "2026-02-03T19:45:00+00:00",
+          "end_utc": "2026-03-05T19:45:00+00:00",
+          "trades": 113,
+          "trades_per_day": 3.77,
+          "win_rate": 39.82,
+          "profit_factor": 0.871,
+          "average_realized_r": -0.0739,
+          "net_pnl": -106.79
+        },
+        {
+          "start_utc": "2026-03-05T19:45:00+00:00",
+          "end_utc": "2026-04-04T19:45:00+00:00",
+          "trades": 35,
+          "trades_per_day": 1.17,
+          "win_rate": 45.71,
+          "profit_factor": 1.099,
+          "average_realized_r": 0.0537,
+          "net_pnl": 22.88
+        },
+        {
+          "start_utc": "2026-04-04T19:45:00+00:00",
+          "end_utc": "2026-05-04T19:45:00+00:00",
+          "trades": 72,
+          "trades_per_day": 2.4,
+          "win_rate": 38.89,
+          "profit_factor": 0.764,
+          "average_realized_r": -0.1529,
+          "net_pnl": -137.38
+        },
+        {
+          "start_utc": "2026-05-04T19:45:00+00:00",
+          "end_utc": "2026-06-03T19:45:00+00:00",
+          "trades": 87,
+          "trades_per_day": 2.9,
+          "win_rate": 50.57,
+          "profit_factor": 1.329,
+          "average_realized_r": 0.164,
+          "net_pnl": 175.09
+        }
+      ]
+    },
+    {
+      "selection_days": 120,
+      "universe_size": 16,
+      "validation": {
+        "trades": 939,
+        "trades_per_day": 3.48,
+        "win_rate": 39.83,
+        "profit_factor": 0.785,
+        "average_realized_r": -0.127,
+        "return_percent": -16.58,
+        "max_drawdown_percent": 20.63
+      },
+      "profitable_months": 2,
+      "months": [
+        {
+          "start_utc": "2025-09-06T19:45:00+00:00",
+          "end_utc": "2025-10-06T19:45:00+00:00",
+          "trades": 132,
+          "trades_per_day": 4.4,
+          "win_rate": 40.15,
+          "profit_factor": 0.733,
+          "average_realized_r": -0.163,
+          "net_pnl": -321.16
+        },
+        {
+          "start_utc": "2025-10-06T19:45:00+00:00",
+          "end_utc": "2025-11-05T19:45:00+00:00",
+          "trades": 116,
+          "trades_per_day": 3.87,
+          "win_rate": 43.97,
+          "profit_factor": 0.81,
+          "average_realized_r": -0.1113,
+          "net_pnl": -190.26
+        },
+        {
+          "start_utc": "2025-11-05T19:45:00+00:00",
+          "end_utc": "2025-12-05T19:45:00+00:00",
+          "trades": 191,
+          "trades_per_day": 6.37,
+          "win_rate": 32.98,
+          "profit_factor": 0.614,
+          "average_realized_r": -0.2683,
+          "net_pnl": -706.4
+        },
+        {
+          "start_utc": "2025-12-05T19:45:00+00:00",
+          "end_utc": "2026-01-04T19:45:00+00:00",
+          "trades": 83,
+          "trades_per_day": 2.77,
+          "win_rate": 32.53,
+          "profit_factor": 0.562,
+          "average_realized_r": -0.2904,
+          "net_pnl": -312.97
+        },
+        {
+          "start_utc": "2026-01-04T19:45:00+00:00",
+          "end_utc": "2026-02-03T19:45:00+00:00",
+          "trades": 110,
+          "trades_per_day": 3.67,
+          "win_rate": 42.73,
+          "profit_factor": 0.897,
+          "average_realized_r": -0.0567,
+          "net_pnl": -81.04
+        },
+        {
+          "start_utc": "2026-02-03T19:45:00+00:00",
+          "end_utc": "2026-03-05T19:45:00+00:00",
+          "trades": 113,
+          "trades_per_day": 3.77,
+          "win_rate": 39.82,
+          "profit_factor": 0.871,
+          "average_realized_r": -0.0739,
+          "net_pnl": -106.76
+        },
+        {
+          "start_utc": "2026-03-05T19:45:00+00:00",
+          "end_utc": "2026-04-04T19:45:00+00:00",
+          "trades": 35,
+          "trades_per_day": 1.17,
+          "win_rate": 45.71,
+          "profit_factor": 1.099,
+          "average_realized_r": 0.0537,
+          "net_pnl": 22.88
+        },
+        {
+          "start_utc": "2026-04-04T19:45:00+00:00",
+          "end_utc": "2026-05-04T19:45:00+00:00",
+          "trades": 72,
+          "trades_per_day": 2.4,
+          "win_rate": 38.89,
+          "profit_factor": 0.764,
+          "average_realized_r": -0.1529,
+          "net_pnl": -137.34
+        },
+        {
+          "start_utc": "2026-05-04T19:45:00+00:00",
+          "end_utc": "2026-06-03T19:45:00+00:00",
+          "trades": 87,
+          "trades_per_day": 2.9,
+          "win_rate": 50.57,
+          "profit_factor": 1.329,
+          "average_realized_r": 0.164,
+          "net_pnl": 175.04
+        }
+      ]
+    }
+  ],
+  "selected": {
+    "selection_days": 60,
+    "universe_size": 8,
+    "validation": {
+      "trades": 918,
+      "trades_per_day": 3.4,
+      "win_rate": 42.37,
+      "profit_factor": 0.887,
+      "average_realized_r": -0.0636,
+      "return_percent": -8.6,
+      "max_drawdown_percent": 11.3
+    },
+    "profitable_months": 2,
+    "months": [
+      {
+        "start_utc": "2025-09-06T19:45:00+00:00",
+        "end_utc": "2025-10-06T19:45:00+00:00",
+        "trades": 108,
+        "trades_per_day": 3.6,
+        "win_rate": 45.37,
+        "profit_factor": 0.979,
+        "average_realized_r": -0.0103,
+        "net_pnl": -19.51
+      },
+      {
+        "start_utc": "2025-10-06T19:45:00+00:00",
+        "end_utc": "2025-11-05T19:45:00+00:00",
+        "trades": 112,
+        "trades_per_day": 3.73,
+        "win_rate": 44.64,
+        "profit_factor": 0.917,
+        "average_realized_r": -0.0465,
+        "net_pnl": -81.53
+      },
+      {
+        "start_utc": "2025-11-05T19:45:00+00:00",
+        "end_utc": "2025-12-05T19:45:00+00:00",
+        "trades": 116,
+        "trades_per_day": 3.87,
+        "win_rate": 38.79,
+        "profit_factor": 0.734,
+        "average_realized_r": -0.1634,
+        "net_pnl": -279.98
+      },
+      {
+        "start_utc": "2025-12-05T19:45:00+00:00",
+        "end_utc": "2026-01-04T19:45:00+00:00",
+        "trades": 85,
+        "trades_per_day": 2.83,
+        "win_rate": 40.0,
+        "profit_factor": 0.673,
+        "average_realized_r": -0.1922,
+        "net_pnl": -234.2
+      },
+      {
+        "start_utc": "2026-01-04T19:45:00+00:00",
+        "end_utc": "2026-02-03T19:45:00+00:00",
+        "trades": 61,
+        "trades_per_day": 2.03,
+        "win_rate": 32.79,
+        "profit_factor": 0.526,
+        "average_realized_r": -0.3319,
+        "net_pnl": -281.6
+      },
+      {
+        "start_utc": "2026-02-03T19:45:00+00:00",
+        "end_utc": "2026-03-05T19:45:00+00:00",
+        "trades": 93,
+        "trades_per_day": 3.1,
+        "win_rate": 38.71,
+        "profit_factor": 0.93,
+        "average_realized_r": -0.0377,
+        "net_pnl": -49.79
+      },
+      {
+        "start_utc": "2026-03-05T19:45:00+00:00",
+        "end_utc": "2026-04-04T19:45:00+00:00",
+        "trades": 121,
+        "trades_per_day": 4.03,
+        "win_rate": 49.59,
+        "profit_factor": 1.296,
+        "average_realized_r": 0.1483,
+        "net_pnl": 243.99
+      },
+      {
+        "start_utc": "2026-04-04T19:45:00+00:00",
+        "end_utc": "2026-05-04T19:45:00+00:00",
+        "trades": 108,
+        "trades_per_day": 3.6,
+        "win_rate": 39.81,
+        "profit_factor": 0.813,
+        "average_realized_r": -0.1163,
+        "net_pnl": -176.06
+      },
+      {
+        "start_utc": "2026-05-04T19:45:00+00:00",
+        "end_utc": "2026-06-03T19:45:00+00:00",
+        "trades": 114,
+        "trades_per_day": 3.8,
+        "win_rate": 45.61,
+        "profit_factor": 1.021,
+        "average_realized_r": 0.0137,
+        "net_pnl": 18.67
+      }
+    ]
+  },
+  "selected_validation_stress_maker4_slippage3": {
+    "trades": 918,
+    "trades_per_day": 3.4,
+    "win_rate": 41.94,
+    "profit_factor": 0.827,
+    "average_realized_r": -0.1021,
+    "return_percent": -13.31,
+    "max_drawdown_percent": 15.15
+  },
+  "final_holdout_once": {
+    "trades": 223,
+    "trades_per_day": 3.72,
+    "win_rate": 51.57,
+    "profit_factor": 1.302,
+    "average_realized_r": 0.1497,
+    "return_percent": 5.08,
+    "max_drawdown_percent": 2.24
+  },
+  "holdout_months": [
+    {
+      "start_utc": "2026-06-03T19:45:00+00:00",
+      "end_utc": "2026-07-03T19:45:00+00:00",
+      "trades": 127,
+      "trades_per_day": 4.23,
+      "win_rate": 48.82,
+      "profit_factor": 1.16,
+      "average_realized_r": 0.0863,
+      "net_pnl": 162.45
+    },
+    {
+      "start_utc": "2026-07-03T19:45:00+00:00",
+      "end_utc": "2026-08-02T19:45:00+00:00",
+      "trades": 96,
+      "trades_per_day": 3.2,
+      "win_rate": 55.21,
+      "profit_factor": 1.52,
+      "average_realized_r": 0.2337,
+      "net_pnl": 345.49
+    }
+  ],
+  "holdout_selection": [
+    {
+      "start_utc": "2026-06-03T19:45:00+00:00",
+      "symbols": [
+        "FILUSDT",
+        "SUIUSDT",
+        "XLMUSDT",
+        "ARBUSDT",
+        "TAOUSDT",
+        "NEARUSDT",
+        "RENDERUSDT",
+        "ETHUSDT"
+      ],
+      "scores": {
+        "FILUSDT": 0.13424,
+        "SUIUSDT": 0.1269,
+        "XLMUSDT": 0.107727,
+        "ARBUSDT": 0.105684,
+        "TAOUSDT": 0.095298,
+        "NEARUSDT": 0.066743,
+        "RENDERUSDT": 0.051438,
+        "ETHUSDT": 0.041567
+      }
+    },
+    {
+      "start_utc": "2026-07-03T19:45:00+00:00",
+      "symbols": [
+        "BNBUSDT",
+        "ETHUSDT",
+        "CRVUSDT",
+        "XLMUSDT",
+        "SOLUSDT",
+        "APTUSDT",
+        "TAOUSDT",
+        "ADAUSDT"
+      ],
+      "scores": {
+        "BNBUSDT": 0.235651,
+        "ETHUSDT": 0.234789,
+        "CRVUSDT": 0.228275,
+        "XLMUSDT": 0.21394,
+        "SOLUSDT": 0.203062,
+        "APTUSDT": 0.193592,
+        "TAOUSDT": 0.19037,
+        "ADAUSDT": 0.135343
+      }
+    }
+  ]
+}

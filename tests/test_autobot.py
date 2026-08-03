@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import datetime as dt
 import json
 import tempfile
 import threading
+import time
 import unittest
 from decimal import Decimal
 from pathlib import Path
@@ -12,6 +14,7 @@ from zoneinfo import ZoneInfo
 from crypto_autobot.binance_futures import (
     BinanceFuturesBroker,
     LIVE_CONFIRMATION,
+    SymbolRules,
     floor_to_step,
     price_to_tick,
 )
@@ -21,17 +24,42 @@ from crypto_autobot.bot import (
     DEMO_TEST_CONFIRMATION,
     RuntimeController,
     adx,
+    broker_watchdog_once,
+    broker_readiness_snapshot,
     build_context,
+    close_position,
     ensure_state,
     ensure_trades_file,
+    fetch_klines,
+    fetch_market_candles,
+    health_snapshot,
+    manage_position,
+    market_data_is_fresh,
+    normalize_broker_position,
     open_position,
     open_demo_test_order,
+    place_pending_entry,
+    public_state,
+    reconcile_pending_entry,
     write_state,
+    load_config,
 )
 
 
 class FakeBroker:
+    order_status = "FILLED"
+
+    def __init__(self):
+        self.cancelled_protection = []
+        self.market_closes = []
+        self.last_open_kwargs = None
+        self.last_limit_kwargs = None
+        self.activation_calls = []
+        self.exchange_positions = []
+        self.protection_ok = True
+
     def open_position(self, **kwargs):
+        self.last_open_kwargs = kwargs
         return {
             "symbol": kwargs["symbol"],
             "side": kwargs["side"],
@@ -45,6 +73,74 @@ class FakeBroker:
             "wallet_balance": "1000",
             "opened_at_ms": 123456789,
         }
+
+    def place_limit_entry(self, **kwargs):
+        self.last_limit_kwargs = kwargs
+        return {
+            "symbol": kwargs["symbol"],
+            "side": kwargs["side"],
+            "quantity": "0.25",
+            "limit_price": str(kwargs["limit_price"]),
+            "entry_order_id": 10,
+            "entry_client_order_id": "autobot-limit-test",
+            "order_status": "NEW",
+            "wallet_balance": "1000",
+        }
+
+    def get_entry_order(self, symbol, client_order_id):
+        return {"symbol": symbol, "clientOrderId": client_order_id, "status": self.order_status}
+
+    def cancel_entry_order(self, symbol, client_order_id):
+        self.order_status = "CANCELED"
+        return self.get_entry_order(symbol, client_order_id)
+
+    def activate_limit_entry(self, **kwargs):
+        self.activation_calls.append(kwargs)
+        return {
+            "status": "FILLED",
+            "symbol": kwargs["symbol"],
+            "side": kwargs["side"],
+            "quantity": "0.25",
+            "entry": "99.8",
+            "stop": "95.8",
+            "target": "105.8",
+            "entry_order_id": 10,
+            "stop_algo_id": 11,
+            "target_algo_id": 12,
+            "wallet_balance": "1000",
+            "opened_at_ms": 123456789,
+        }
+
+    def has_stop_and_target(self, symbol):
+        return self.protection_ok
+
+    def account_summary(self):
+        return {
+            "balance": 1000,
+            "available_balance": 1000,
+            "positions": list(self.exchange_positions),
+            "environment": "demo",
+            "position_mode": "ONE_WAY",
+        }
+
+    def get_open_positions(self):
+        return list(self.exchange_positions)
+
+    def get_open_position(self, symbol):
+        return next((item for item in self.exchange_positions if item.get("symbol") == symbol), None)
+
+    def get_balance(self):
+        return {"balance": 1000, "availableBalance": 1000}
+
+    def realized_pnl_since(self, symbol, start_time_ms):
+        return {"realized_pnl": 0, "commission": 0, "net_pnl": 0}
+
+    def cancel_protection(self, symbol):
+        self.cancelled_protection.append(symbol)
+
+    def market_close(self, symbol, position):
+        self.market_closes.append((symbol, position))
+        return {"status": "FILLED"}
 
 
 def test_config(data_dir: str) -> dict:
@@ -104,6 +200,72 @@ def write_mode_configs(root: Path, data_dir: str) -> dict[str, Path]:
 
 
 class BinanceMathTests(unittest.TestCase):
+    def test_broker_positions_are_normalized_for_the_runtime(self):
+        binance = normalize_broker_position({
+            "symbol": "BTCUSDT",
+            "positionAmt": "-0.5",
+            "entryPrice": "100",
+            "unRealizedProfit": "3.2",
+        })
+        mt5 = normalize_broker_position({
+            "symbol": "BTCUSDT",
+            "side": "long",
+            "quantity": 0.25,
+            "entry": 101.0,
+            "stop": 98.0,
+            "target": 106.0,
+            "unrealized_pnl": 1.2,
+            "position_ticket": 7,
+        })
+
+        self.assertEqual((binance["side"], binance["quantity"]), ("short", 0.5))
+        self.assertEqual(binance["unrealized_pnl"], 3.2)
+        self.assertEqual(mt5["position_ticket"], 7)
+        self.assertEqual(mt5["target"], 106.0)
+
+
+class BinanceBrokerTests(unittest.TestCase):
+    def test_limit_entry_is_post_only_and_tick_rounded(self):
+        broker = BinanceFuturesBroker(
+            environment="demo",
+            api_key="key",
+            secret_key="secret",
+            orders_enabled=True,
+        )
+        captured = {}
+        broker.verify_one_way_mode = lambda: None
+        broker.get_open_position = lambda symbol: None
+        broker.get_open_positions = lambda: []
+        broker.cancel_protection = lambda symbol: None
+        broker.set_symbol_risk = lambda symbol: None
+        broker.get_balance = lambda: {"balance": "1000", "availableBalance": "1000"}
+        broker.symbol_rules = lambda symbol: SymbolRules(
+            quantity_step=Decimal("0.001"),
+            min_quantity=Decimal("0.001"),
+            max_quantity=Decimal("100"),
+            price_tick=Decimal("0.1"),
+            min_notional=Decimal("5"),
+        )
+
+        def signed(method, path, params=None):
+            captured.update({"method": method, "path": path, "params": params})
+            return {"orderId": 123, "status": "NEW"}
+
+        broker.signed = signed
+        result = broker.place_limit_entry(
+            symbol="BTCUSDT",
+            side="long",
+            limit_price=99.87,
+            stop_distance=4,
+            target_distance=6,
+            risk_percent=0.5,
+            max_open_positions=2,
+        )
+        self.assertEqual(captured["params"]["type"], "LIMIT")
+        self.assertEqual(captured["params"]["timeInForce"], "GTX")
+        self.assertEqual(captured["params"]["price"], "99.8")
+        self.assertEqual(result["entry_order_id"], 123)
+
     def test_quantity_and_price_rounding(self):
         self.assertEqual(floor_to_step(Decimal("1.239"), Decimal("0.01")), Decimal("1.23"))
         self.assertEqual(price_to_tick(Decimal("100.19"), Decimal("0.1"), "down"), Decimal("100.1"))
@@ -143,17 +305,787 @@ class BinanceMathTests(unittest.TestCase):
             secret_key="secret",
         )
         broker.signed = lambda method, path, params=None: [
-            {"orderType": "STOP_MARKET", "algoStatus": "NEW"},
-            {"orderType": "TAKE_PROFIT_MARKET", "algoStatus": "NEW"},
+            {
+                "orderType": "STOP_MARKET",
+                "algoStatus": "NEW",
+                "clientAlgoId": "autobot-sl-test",
+            },
+            {
+                "orderType": "TAKE_PROFIT_MARKET",
+                "algoStatus": "NEW",
+                "clientAlgoId": "autobot-tp-test",
+            },
         ]
         self.assertTrue(broker.has_stop_and_target("BTCUSDT"))
         broker.signed = lambda method, path, params=None: [
-            {"orderType": "STOP_MARKET", "algoStatus": "NEW"}
+            {
+                "orderType": "STOP_MARKET",
+                "algoStatus": "NEW",
+                "clientAlgoId": "autobot-sl-test",
+            }
         ]
         self.assertFalse(broker.has_stop_and_target("BTCUSDT"))
 
+    def test_limit_target_is_post_only_reduce_only_protection(self):
+        broker = BinanceFuturesBroker(
+            environment="demo",
+            api_key="key",
+            secret_key="secret",
+            orders_enabled=True,
+            target_order_type="limit",
+        )
+        calls = []
+
+        def signed(method, path, params=None):
+            calls.append((method, path, params or {}))
+            if path == "/fapi/v1/algoOrder":
+                return {"algoId": 10}
+            return {"orderId": 20, "status": "NEW"}
+
+        broker.signed = signed
+        stop, target = broker.place_protection(
+            "BTCUSDT",
+            "SELL",
+            Decimal("95.1"),
+            Decimal("110.2"),
+            Decimal("0.25"),
+        )
+
+        self.assertEqual(stop["algoId"], 10)
+        self.assertEqual(target["orderId"], 20)
+        target_call = calls[1]
+        self.assertEqual(target_call[:2], ("POST", "/fapi/v1/order"))
+        self.assertEqual(target_call[2]["type"], "LIMIT")
+        self.assertEqual(target_call[2]["timeInForce"], "GTX")
+        self.assertEqual(target_call[2]["reduceOnly"], "true")
+        self.assertEqual(target_call[2]["quantity"], "0.25")
+        self.assertEqual(target_call[2]["price"], "110.2")
+
+    def test_limit_target_and_market_stop_are_detected_together(self):
+        broker = BinanceFuturesBroker(
+            environment="demo",
+            api_key="key",
+            secret_key="secret",
+            target_order_type="limit",
+        )
+
+        def signed(method, path, params=None):
+            if path == "/fapi/v1/openAlgoOrders":
+                return [{
+                    "orderType": "STOP_MARKET",
+                    "algoStatus": "NEW",
+                    "clientAlgoId": "autobot-sl-test",
+                }]
+            if path == "/fapi/v1/openOrders":
+                return [{
+                    "type": "LIMIT",
+                    "status": "PARTIALLY_FILLED",
+                    "reduceOnly": True,
+                    "clientOrderId": "autobot-tp-limit-test",
+                }]
+            raise AssertionError(path)
+
+        broker.signed = signed
+        self.assertTrue(broker.has_stop_and_target("BTCUSDT"))
+
+    def test_cancel_protection_leaves_manual_orders_untouched(self):
+        broker = BinanceFuturesBroker(
+            environment="demo",
+            api_key="key",
+            secret_key="secret",
+            target_order_type="limit",
+        )
+        deleted = []
+
+        def signed(method, path, params=None):
+            if method == "GET" and path == "/fapi/v1/openAlgoOrders":
+                return [
+                    {"algoId": 1, "clientAlgoId": "autobot-sl-test"},
+                    {"algoId": 2, "clientAlgoId": "manual-stop"},
+                ]
+            if method == "GET" and path == "/fapi/v1/openOrders":
+                return [
+                    {"orderId": 3, "clientOrderId": "autobot-tp-limit-test"},
+                    {"orderId": 4, "clientOrderId": "manual-target"},
+                ]
+            if method == "DELETE":
+                deleted.append((path, params))
+                return {}
+            raise AssertionError((method, path))
+
+        broker.signed = signed
+        broker.cancel_protection("BTCUSDT")
+
+        self.assertEqual(
+            deleted,
+            [
+                ("/fapi/v1/algoOrder", {"algoId": 1}),
+                ("/fapi/v1/order", {"symbol": "BTCUSDT", "orderId": 3}),
+            ],
+        )
+
+
+class HealthSnapshotTests(unittest.TestCase):
+    def make_context(self, tmp: str, mode: str = "paper") -> BotContext:
+        config = mode_config(tmp, mode)
+        config["app"]["health_stale_after_seconds"] = 180
+        return BotContext(
+            config=config,
+            state_path=Path(tmp) / f"state_{mode}.json",
+            trades_path=Path(tmp) / f"trades_{mode}.csv",
+            timezone=ZoneInfo("UTC"),
+            mode=mode,
+            broker=None,
+            orders_enabled=mode == "paper",
+            exchange_snapshot={},
+            lock=threading.Lock(),
+            stop_event=threading.Event(),
+        )
+
+    def test_fresh_paper_scan_is_healthy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = self.make_context(tmp)
+            state = ensure_state(ctx)
+            state["runtime"]["last_scan_completed_at"] = "2026-08-03T10:00:00+00:00"
+
+            payload, status = health_snapshot(
+                ctx,
+                state,
+                now=dt.datetime(2026, 8, 3, 10, 1, tzinfo=dt.timezone.utc),
+            )
+
+            self.assertEqual(status, 200)
+            self.assertEqual(payload["status"], "ok")
+            self.assertEqual(payload["heartbeat_age_seconds"], 60.0)
+
+    def test_stale_scan_is_degraded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = self.make_context(tmp)
+            state = ensure_state(ctx)
+            state["runtime"]["last_scan_completed_at"] = "2026-08-03T10:00:00+00:00"
+
+            payload, status = health_snapshot(
+                ctx,
+                state,
+                now=dt.datetime(2026, 8, 3, 10, 4, tzinfo=dt.timezone.utc),
+            )
+
+            self.assertEqual(status, 503)
+            self.assertEqual(payload["status"], "degraded")
+
+    def test_disconnected_demo_broker_is_degraded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = self.make_context(tmp, mode="demo")
+            state = ensure_state(ctx)
+            state["runtime"]["last_scan_completed_at"] = "2026-08-03T10:00:00+00:00"
+            state["broker_status"] = {"connected": False}
+
+            payload, status = health_snapshot(
+                ctx,
+                state,
+                now=dt.datetime(2026, 8, 3, 10, 1, tzinfo=dt.timezone.utc),
+            )
+
+            self.assertEqual(status, 503)
+            self.assertFalse(payload["broker_connected"])
+
+    def test_demo_orders_require_a_fresh_protection_watchdog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = self.make_context(tmp, mode="demo")
+            ctx.broker = FakeBroker()
+            ctx.orders_enabled = True
+            state = ensure_state(ctx)
+            state["runtime"]["last_scan_completed_at"] = "2026-08-03T10:00:00+00:00"
+            state["broker_status"] = {"connected": True}
+
+            payload, status = health_snapshot(
+                ctx,
+                state,
+                now=dt.datetime(2026, 8, 3, 10, 1, tzinfo=dt.timezone.utc),
+            )
+
+            self.assertEqual(status, 503)
+            self.assertTrue(payload["watchdog_required"])
+
+            state["runtime"]["last_watchdog_completed_at"] = "2026-08-03T10:00:58+00:00"
+            payload, status = health_snapshot(
+                ctx,
+                state,
+                now=dt.datetime(2026, 8, 3, 10, 1, tzinfo=dt.timezone.utc),
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(payload["watchdog_age_seconds"], 2.0)
+
 
 class BotModeTests(unittest.TestCase):
+    def test_asymmetric_profile_enables_both_sides_with_smaller_long_risk(self):
+        path = Path(__file__).parents[1] / "config.paper.asymmetric-15m.example.json"
+        config = load_config(path)
+
+        self.assertTrue(config["strategy"]["allow_longs"])
+        self.assertTrue(config["strategy"]["allow_shorts"])
+        self.assertFalse(config["ensemble"]["enabled"])
+        self.assertEqual(config["account"]["short_risk_per_trade_percent"], 0.15)
+        self.assertEqual(config["account"]["long_risk_per_trade_percent"], 0.025)
+        self.assertEqual(config["market"]["interval"], "15m")
+
+    def test_market_data_freshness_blocks_old_candles(self):
+        interval_ms = 15 * 60 * 1000
+        now_ms = 1_800_000_000_000
+        fresh = Candle(0, 99, 101, 98, 100, 10, now_ms - interval_ms)
+        stale = Candle(0, 99, 101, 98, 100, 10, now_ms - 2 * interval_ms - 1)
+
+        self.assertTrue(market_data_is_fresh(fresh, "15m", 2, now_ms))
+        self.assertFalse(market_data_is_fresh(stale, "15m", 2, now_ms))
+        self.assertTrue(market_data_is_fresh(stale, "15m", 0, now_ms))
+
+    def test_broker_readiness_checks_every_symbol_without_sending_orders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["market"].update({
+                "symbols": ["BTCUSDT", "ETHUSDT"],
+                "interval": "15m",
+                "history_limit": 50,
+                "max_candle_age_intervals": 2,
+            })
+            broker = FakeBroker()
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=False,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            now_ms = int(time.time() * 1000)
+            candles = [
+                Candle(
+                    open_time=now_ms - (40 - index) * 900_000,
+                    open=100,
+                    high=101,
+                    low=99,
+                    close=100,
+                    volume=10,
+                    close_time=now_ms - (39 - index) * 900_000 - 1,
+                )
+                for index in range(40)
+            ]
+
+            with patch("crypto_autobot.bot.fetch_market_candles", return_value=candles) as fetch:
+                result = broker_readiness_snapshot(ctx)
+
+            self.assertTrue(result["ready"])
+            self.assertEqual(result["orders_sent"], 0)
+            self.assertEqual(fetch.call_count, 2)
+            self.assertEqual({item["symbol"] for item in result["symbols"]}, {"BTCUSDT", "ETHUSDT"})
+            self.assertIsNone(broker.last_open_kwargs)
+
+    def test_side_specific_risk_changes_paper_position_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = test_config(tmp)
+            config["account"].update(
+                {
+                    "short_risk_per_trade_percent": 0.15,
+                    "long_risk_per_trade_percent": 0.025,
+                }
+            )
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            ensure_trades_file(ctx)
+            signal = Candle(0, 99, 101, 98, 100, 10, 899_999)
+
+            open_position(ctx, state, "BTCUSDT", "long", signal, 10.0, "long test")
+            long_position = state["positions"].pop("BTCUSDT")
+            open_position(ctx, state, "BTCUSDT", "short", signal, 10.0, "short test")
+            short_position = state["positions"]["BTCUSDT"]
+
+            self.assertEqual(long_position["risk_percent"], 0.025)
+            self.assertEqual(short_position["risk_percent"], 0.15)
+            self.assertAlmostEqual(short_position["qty"] / long_position["qty"], 6.0)
+
+    def test_side_specific_risk_is_passed_to_broker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = test_config(tmp)
+            config["broker"] = {"mode": "demo", "provider": "binance"}
+            config["account"]["long_risk_per_trade_percent"] = 0.025
+            broker = FakeBroker()
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            ensure_trades_file(ctx)
+            signal = Candle(0, 99, 101, 98, 100, 10, 899_999)
+
+            open_position(ctx, state, "BTCUSDT", "long", signal, 2.0, "test")
+
+            self.assertEqual(broker.last_open_kwargs["risk_percent"], 0.025)
+
+    def test_watchdog_activates_a_filled_limit_without_waiting_for_market_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["market"]["interval"] = "15m"
+            broker = FakeBroker()
+            broker.order_status = "FILLED"
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            state["pending_entries"]["BTCUSDT"] = {
+                "symbol": "BTCUSDT",
+                "side": "long",
+                "limit_price": 100.0,
+                "stop_distance": 4.0,
+                "target_distance": 6.0,
+                "signal_candle_time": 1_700_000_000_000,
+                "expiry_open_time": 9_000_000_000_000,
+                "atr": 2.0,
+                "reason": "watchdog test",
+                "trade_profile": {},
+                "entry_client_order_id": "autobot-limit-test",
+            }
+            write_state(ctx, state)
+
+            result = broker_watchdog_once(ctx)
+            state = ensure_state(ctx)
+
+            self.assertEqual(result["status"], "ok")
+            self.assertNotIn("BTCUSDT", state["pending_entries"])
+            self.assertEqual(state["positions"]["BTCUSDT"]["stop"], 95.8)
+            self.assertEqual(state["positions"]["BTCUSDT"]["target"], 105.8)
+            self.assertEqual(len(broker.activation_calls), 1)
+
+    def test_watchdog_emergency_closes_a_position_missing_protection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            broker = FakeBroker()
+            broker.protection_ok = False
+            broker.exchange_positions = [{
+                "symbol": "BTCUSDT",
+                "side": "long",
+                "quantity": 0.25,
+                "entry": 100.0,
+                "stop": 96.0,
+                "target": 106.0,
+                "unrealized_pnl": 0.0,
+            }]
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            state["positions"]["BTCUSDT"] = {
+                "symbol": "BTCUSDT",
+                "side": "long",
+                "entry": 100.0,
+                "qty": 0.25,
+                "stop": 96.0,
+                "target": 106.0,
+            }
+            write_state(ctx, state)
+
+            broker_watchdog_once(ctx)
+            state = ensure_state(ctx)
+
+            self.assertTrue(state["positions"]["BTCUSDT"]["emergency_close_sent"])
+            self.assertEqual(len(broker.market_closes), 1)
+
+    def test_config_can_inherit_a_profile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "base.json").write_text(
+                json.dumps({"app": {"port": 1, "name": "base"}, "market": {"interval": "15m"}}),
+                encoding="utf-8",
+            )
+            child = root / "child.json"
+            child.write_text(
+                json.dumps({"extends": "base.json", "app": {"name": "child"}}),
+                encoding="utf-8",
+            )
+
+            config = load_config(child)
+
+            self.assertEqual(config["app"], {"port": 1, "name": "child"})
+            self.assertEqual(config["market"]["interval"], "15m")
+
+    @patch("crypto_autobot.bot.MT5Broker")
+    def test_build_context_supports_mt5_without_storing_credentials(self, mt5_class):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["broker"].update(
+                {
+                    "provider": "mt5",
+                    "symbol_map": {"ETHUSDT": "ETHUSD"},
+                    "magic": 12345,
+                }
+            )
+            path = Path(tmp) / "config.mt5-demo.json"
+            path.write_text(json.dumps(config), encoding="utf-8")
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "MT5_LOGIN": "123456",
+                    "MT5_PASSWORD": "private-password",
+                    "MT5_SERVER": "Broker-Demo",
+                },
+                clear=False,
+            ):
+                ctx = build_context(path, orders_enabled=True)
+
+            self.assertEqual(ctx.state_path.name, "state_mt5_demo.json")
+            self.assertEqual(ctx.trades_path.name, "trades_mt5_demo.csv")
+            self.assertTrue(ctx.orders_enabled)
+            kwargs = mt5_class.call_args.kwargs
+            self.assertEqual(kwargs["login"], 123456)
+            self.assertEqual(kwargs["password"], "private-password")
+            self.assertEqual(kwargs["server"], "Broker-Demo")
+            self.assertEqual(kwargs["symbol_map"], {"ETHUSDT": "ETHUSD"})
+
+    @patch("crypto_autobot.bot.request_json")
+    def test_demo_klines_use_futures_path_and_keep_order_flow(self, request_json_mock):
+        request_json_mock.return_value = [[
+            0, "100", "102", "99", "101", "20", 899_999,
+            "2020", 42, "12", "1212", "0",
+        ]]
+
+        candles = fetch_klines("https://demo-fapi.binance.com", "BTCUSDT", "15m", 10)
+
+        self.assertEqual(request_json_mock.call_args.args[0], "https://demo-fapi.binance.com/fapi/v1/klines")
+        self.assertEqual(candles[0].trade_count, 42)
+        self.assertEqual(candles[0].taker_buy_volume, 12.0)
+        self.assertEqual(candles[0].taker_buy_quote_volume, 1212.0)
+
+    def test_mt5_profile_uses_broker_native_candles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["broker"]["provider"] = "mt5"
+            broker = FakeBroker()
+            broker.fetch_candles = lambda symbol, interval, limit: [{
+                "open_time": 1_700_000_000_000,
+                "open": 100,
+                "high": 102,
+                "low": 99,
+                "close": 101,
+                "volume": 50,
+                "close_time": 1_700_000_899_999,
+            }]
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=False,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+
+            with patch("crypto_autobot.bot.fetch_klines") as binance_fetch:
+                candles = fetch_market_candles(ctx, "BTCUSDT")
+
+            binance_fetch.assert_not_called()
+            self.assertEqual(candles[0].close, 101.0)
+            self.assertEqual(candles[0].open_dt, "2023-11-14 22:13 UTC")
+
+    def test_public_state_hides_stale_market_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "paper")
+            config["market"]["symbols"] = ["BTCUSDT"]
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_paper.json",
+                trades_path=Path(tmp) / "trades_paper.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            state["latest"] = {
+                "BTCUSDT": {"price": 100.0},
+                "OLDUSDT": {"price": 10.0},
+            }
+
+            result = public_state(ctx, state)
+
+            self.assertEqual(set(result["latest"]), {"BTCUSDT"})
+
+    def test_paper_position_closes_after_max_holding_bars(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "paper")
+            config["market"]["interval"] = "15m"
+            config["strategy"]["max_holding_bars"] = 2
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            ensure_trades_file(ctx)
+            state["positions"]["BTCUSDT"] = {
+                "symbol": "BTCUSDT",
+                "side": "long",
+                "entry": 100.0,
+                "qty": 1.0,
+                "stop": 90.0,
+                "initial_stop": 90.0,
+                "target": 120.0,
+                "opened_candle_time": 0,
+                "highest": 101.0,
+                "lowest": 99.0,
+            }
+
+            manage_position(
+                ctx,
+                state,
+                "BTCUSDT",
+                Candle(1_800_000, 102, 104, 101, 103, 10, 2_699_999),
+                None,
+            )
+
+            self.assertNotIn("BTCUSDT", state["positions"])
+            self.assertEqual(state["trades"][-1]["reason"], "time_exit")
+
+    def test_paper_limit_trade_includes_entry_and_target_maker_fees(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "paper")
+            config["strategy"].update(
+                {
+                    "entry_order_type": "limit_retrace",
+                    "target_order_type": "limit",
+                    "stop_atr": 2.0,
+                    "target_atr": 2.8,
+                }
+            )
+            config["broker"].update(
+                {
+                    "paper_maker_fee_bps": 2.0,
+                    "paper_taker_fee_bps": 5.0,
+                    "paper_slippage_bps": 2.0,
+                }
+            )
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            ensure_trades_file(ctx)
+            signal = Candle(0, 99, 101, 98, 100, 10, 899_999)
+
+            open_position(ctx, state, "BTCUSDT", "long", signal, 10.0, "test")
+            target = float(state["positions"]["BTCUSDT"]["target"])
+            close_position(ctx, state, "BTCUSDT", target, "target")
+
+            self.assertAlmostEqual(state["balance"], 1006.9886, places=4)
+            self.assertAlmostEqual(state["realized_pnl"], 6.9886, places=4)
+
+    def test_position_keeps_its_own_ml_rr_and_time_exit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "paper")
+            config["market"]["interval"] = "15m"
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            ensure_trades_file(ctx)
+            candle = Candle(0, 99, 101, 98, 100, 10, 899_999)
+
+            open_position(
+                ctx,
+                state,
+                "BTCUSDT",
+                "long",
+                candle,
+                10.0,
+                "ml test",
+                trade_profile={
+                    "source": "orderflow_ml",
+                    "entry_order_type": "market",
+                    "target_order_type": "limit",
+                    "stop_atr": 1.5,
+                    "target_atr": 3.0,
+                    "max_holding_bars": 16,
+                },
+            )
+
+            position = state["positions"]["BTCUSDT"]
+            self.assertEqual(position["stop"], 85.0)
+            self.assertEqual(position["target"], 130.0)
+            self.assertEqual(position["source"], "orderflow_ml")
+            self.assertEqual(position["max_holding_bars"], 16)
+
+    def test_demo_time_exit_cancels_protection_before_market_close(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["market"]["interval"] = "15m"
+            config["strategy"]["max_holding_bars"] = 2
+            broker = FakeBroker()
+            exchange_position = {
+                "symbol": "BTCUSDT",
+                "positionAmt": "0.25",
+                "entryPrice": "100",
+                "unRealizedProfit": "0.75",
+            }
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={"BTCUSDT": exchange_position},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            state["broker_status"] = {"connected": True}
+            state["positions"]["BTCUSDT"] = {
+                "symbol": "BTCUSDT",
+                "side": "long",
+                "entry": 100.0,
+                "qty": 0.25,
+                "stop": 90.0,
+                "initial_stop": 90.0,
+                "target": 120.0,
+                "opened_candle_time": 0,
+            }
+
+            manage_position(
+                ctx,
+                state,
+                "BTCUSDT",
+                Candle(1_800_000, 102, 104, 101, 103, 10, 2_699_999),
+                None,
+            )
+
+            self.assertEqual(broker.cancelled_protection, ["BTCUSDT"])
+            self.assertEqual(broker.market_closes, [("BTCUSDT", exchange_position)])
+            self.assertTrue(state["positions"]["BTCUSDT"]["time_exit_sent"])
+
+    def test_regime_profile_switches_to_matching_paper_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paper_path = root / "config.paper.regime-scalp.example.json"
+            demo_path = root / "config.demo.regime-scalp.example.json"
+            paper_path.write_text(json.dumps(mode_config(tmp, "paper")), encoding="utf-8")
+            demo_path.write_text(json.dumps(mode_config(tmp, "demo")), encoding="utf-8")
+            paper = build_context(paper_path)
+            controller = RuntimeController(
+                paper,
+                paper_path,
+                orders_enabled=False,
+                allow_live_ui=False,
+            )
+
+            self.assertEqual(controller.profile_paths["demo"], demo_path.resolve())
+            self.assertFalse(controller.profile_paths["live"].exists())
+
+    def test_filled_limit_becomes_a_protected_position(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["market"]["interval"] = "15m"
+            config["strategy"].update(
+                {"entry_order_type": "limit_retrace", "entry_offset_atr": 0.1, "entry_expiry_bars": 1}
+            )
+            broker = FakeBroker()
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            ensure_trades_file(ctx)
+            signal = Candle(0, 99, 101, 98, 100, 10, 899_999)
+            next_candle = Candle(900_000, 100, 101, 99, 100, 10, 1_799_999)
+            place_pending_entry(ctx, state, "BTCUSDT", "long", signal, 2.0, "test signal")
+            self.assertNotIn("BTCUSDT", state["positions"])
+            self.assertIn("BTCUSDT", state["pending_entries"])
+
+            result = reconcile_pending_entry(ctx, state, "BTCUSDT", [signal, next_candle])
+            self.assertEqual(result, "limit filled long")
+            self.assertNotIn("BTCUSDT", state["pending_entries"])
+            self.assertEqual(state["positions"]["BTCUSDT"]["entry"], 99.8)
+            self.assertEqual(state["positions"]["BTCUSDT"]["stop_algo_id"], 11)
+            self.assertEqual(sum(int(item["trades"]) for item in state["daily"].values()), 1)
+
     def test_demo_test_order_is_blocked_outside_demo(self):
         with tempfile.TemporaryDirectory() as tmp:
             ctx = BotContext(
@@ -408,6 +1340,30 @@ class BotModeTests(unittest.TestCase):
                 clear=False,
             ):
                 with self.assertRaisesRegex(ValueError, "открытую позицию"):
+                    controller.switch_mode("demo")
+
+    def test_runtime_does_not_abandon_a_pending_entry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = write_mode_configs(Path(tmp), tmp)
+            paper = build_context(paths["paper"])
+            state = ensure_state(paper)
+            state["pending_entries"]["BTCUSDT"] = {"side": "long", "limit_price": 99}
+            write_state(paper, state)
+            controller = RuntimeController(
+                paper,
+                paths["paper"],
+                orders_enabled=True,
+                allow_live_ui=False,
+            )
+            with patch.dict(
+                "os.environ",
+                {
+                    "BINANCE_DEMO_API_KEY": "demo-key",
+                    "BINANCE_DEMO_API_SECRET": "demo-secret",
+                },
+                clear=False,
+            ):
+                with self.assertRaisesRegex(ValueError, "лимитная заявка"):
                     controller.switch_mode("demo")
 
 

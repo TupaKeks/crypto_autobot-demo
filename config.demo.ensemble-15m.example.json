@@ -1,0 +1,20 @@
+{
+  "extends": "config.paper.ensemble-15m.example.json",
+  "app": {
+    "name": "Crypto Autobot Ensemble 15m Demo",
+    "data_dir": "crypto_autobot/data/ensemble_15m_demo"
+  },
+  "market": {
+    "base_url": "https://demo-fapi.binance.com"
+  },
+  "broker": {
+    "provider": "binance",
+    "mode": "demo",
+    "recv_window_ms": 5000,
+    "quote_asset": "USDT",
+    "leverage": 2,
+    "margin_type": "ISOLATED",
+    "working_type": "MARK_PRICE",
+    "price_protect": false
+  }
+}

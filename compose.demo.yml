@@ -1,0 +1,23 @@
+services:
+  crypto-autobot-demo:
+    build:
+      context: ..
+      dockerfile: crypto_autobot/Dockerfile
+    command:
+      - python
+      - crypto_autobot/bot.py
+      - --config
+      - crypto_autobot/config.demo.asymmetric-15m.example.json
+      - --enable-orders
+    environment:
+      BINANCE_DEMO_API_KEY: ${BINANCE_DEMO_API_KEY:?BINANCE_DEMO_API_KEY is required}
+      BINANCE_DEMO_API_SECRET: ${BINANCE_DEMO_API_SECRET:?BINANCE_DEMO_API_SECRET is required}
+      DASHBOARD_CONTROL_TOKEN: ${DASHBOARD_CONTROL_TOKEN:-}
+      HOST: 0.0.0.0
+      PORT: 8090
+      TZ: Europe/Warsaw
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - ./data:/app/crypto_autobot/data
+    restart: unless-stopped

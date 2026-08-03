@@ -77,6 +77,7 @@ class BinanceFuturesBroker:
         margin_type: str = "ISOLATED",
         working_type: str = "MARK_PRICE",
         price_protect: bool = False,
+        target_order_type: str = "market",
     ):
         if environment not in ("demo", "live"):
             raise ValueError("Binance environment must be demo or live.")
@@ -94,6 +95,8 @@ class BinanceFuturesBroker:
             raise ValueError("Safety limit: only ISOLATED margin is supported.")
         if working_type not in ("MARK_PRICE", "CONTRACT_PRICE"):
             raise ValueError("working_type must be MARK_PRICE or CONTRACT_PRICE.")
+        if target_order_type not in ("market", "limit"):
+            raise ValueError("target_order_type must be market or limit.")
 
         self.environment = environment
         self.base_url = DEMO_BASE_URL if environment == "demo" else LIVE_BASE_URL
@@ -106,6 +109,7 @@ class BinanceFuturesBroker:
         self.margin_type = margin_type.upper()
         self.working_type = working_type
         self.price_protect = price_protect
+        self.target_order_type = target_order_type
         self.time_offset_ms = 0
         self._rules: dict[str, SymbolRules] = {}
 
@@ -236,11 +240,33 @@ class BinanceFuturesBroker:
                 raise
 
     def cancel_protection(self, symbol: str) -> None:
-        try:
-            self.signed("DELETE", "/fapi/v1/algoOpenOrders", {"symbol": symbol})
-        except BinanceAPIError as exc:
-            if exc.code not in (-2011, -2013):
-                raise
+        for order in self.get_open_algo_orders(symbol):
+            client_id = str(order.get("clientAlgoId", ""))
+            if not client_id.startswith(("autobot-sl-", "autobot-tp-")):
+                continue
+            try:
+                self.signed(
+                    "DELETE",
+                    "/fapi/v1/algoOrder",
+                    {"algoId": order["algoId"]},
+                )
+            except BinanceAPIError as exc:
+                if exc.code not in (-2011, -2013):
+                    raise
+
+        for order in self.get_open_orders(symbol):
+            client_id = str(order.get("clientOrderId", ""))
+            if not client_id.startswith("autobot-tp-limit-"):
+                continue
+            try:
+                self.signed(
+                    "DELETE",
+                    "/fapi/v1/order",
+                    {"symbol": symbol, "orderId": order["orderId"]},
+                )
+            except BinanceAPIError as exc:
+                if exc.code not in (-2011, -2013):
+                    raise
 
     def get_open_algo_orders(self, symbol: str) -> list[dict[str, Any]]:
         return list(
@@ -251,18 +277,50 @@ class BinanceFuturesBroker:
             )
         )
 
+    def get_open_orders(self, symbol: str) -> list[dict[str, Any]]:
+        return list(self.signed("GET", "/fapi/v1/openOrders", {"symbol": symbol}))
+
     def has_stop_and_target(self, symbol: str) -> bool:
-        order_types = {
-            str(order.get("orderType", "")).upper()
+        algo_orders = [
+            order
             for order in self.get_open_algo_orders(symbol)
             if str(order.get("algoStatus", "NEW")).upper() == "NEW"
-        }
-        return "STOP_MARKET" in order_types and "TAKE_PROFIT_MARKET" in order_types
+        ]
+        has_stop = any(
+            str(order.get("orderType", "")).upper() == "STOP_MARKET"
+            and str(order.get("clientAlgoId", "")).startswith("autobot-sl-")
+            for order in algo_orders
+        )
+        if self.target_order_type == "market":
+            has_target = any(
+                str(order.get("orderType", "")).upper() == "TAKE_PROFIT_MARKET"
+                and str(order.get("clientAlgoId", "")).startswith("autobot-tp-")
+                for order in algo_orders
+            )
+        else:
+            has_target = any(
+                str(order.get("type", "")).upper() == "LIMIT"
+                and str(order.get("status", "NEW")).upper() in ("NEW", "PARTIALLY_FILLED")
+                and (
+                    order.get("reduceOnly") is True
+                    or str(order.get("reduceOnly", "")).lower() == "true"
+                )
+                and str(order.get("clientOrderId", "")).startswith("autobot-tp-limit-")
+                for order in self.get_open_orders(symbol)
+            )
+        return has_stop and has_target
 
     def market_close(self, symbol: str, position: dict[str, Any]) -> dict[str, Any]:
         self.require_orders_enabled()
-        amount = Decimal(str(position["positionAmt"]))
-        side = "SELL" if amount > 0 else "BUY"
+        if "positionAmt" in position:
+            amount = Decimal(str(position["positionAmt"]))
+            side = "SELL" if amount > 0 else "BUY"
+            quantity = abs(amount)
+        else:
+            side = "SELL" if str(position.get("side")) == "long" else "BUY"
+            quantity = abs(Decimal(str(position.get("quantity", "0"))))
+        if quantity <= 0:
+            raise ValueError(f"Cannot close {symbol}: position quantity is zero.")
         return self.signed(
             "POST",
             "/fapi/v1/order",
@@ -270,7 +328,7 @@ class BinanceFuturesBroker:
                 "symbol": symbol,
                 "side": side,
                 "type": "MARKET",
-                "quantity": decimal_text(abs(amount)),
+                "quantity": decimal_text(quantity),
                 "reduceOnly": "true",
                 "newOrderRespType": "RESULT",
                 "newClientOrderId": f"autobot-close-{uuid.uuid4().hex[:18]}",
@@ -283,6 +341,7 @@ class BinanceFuturesBroker:
         exit_side: str,
         stop: Decimal,
         target: Decimal,
+        quantity: Decimal,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         self.require_orders_enabled()
         common = {
@@ -293,27 +352,74 @@ class BinanceFuturesBroker:
             "workingType": self.working_type,
             "priceProtect": str(self.price_protect).lower(),
         }
-        stop_order = self.signed(
-            "POST",
-            "/fapi/v1/algoOrder",
-            {
-                **common,
-                "type": "STOP_MARKET",
-                "triggerPrice": decimal_text(stop),
-                "clientAlgoId": f"autobot-sl-{uuid.uuid4().hex[:20]}",
-            },
-        )
+        stop_client_id = f"autobot-sl-{uuid.uuid4().hex[:20]}"
         try:
-            target_order = self.signed(
+            stop_order = self.signed(
                 "POST",
                 "/fapi/v1/algoOrder",
                 {
                     **common,
-                    "type": "TAKE_PROFIT_MARKET",
-                    "triggerPrice": decimal_text(target),
-                    "clientAlgoId": f"autobot-tp-{uuid.uuid4().hex[:20]}",
+                    "type": "STOP_MARKET",
+                    "triggerPrice": decimal_text(stop),
+                    "clientAlgoId": stop_client_id,
                 },
             )
+        except BinanceAPIError as exc:
+            if exc.status != 503:
+                raise
+            stop_order = self.signed(
+                "GET",
+                "/fapi/v1/algoOrder",
+                {"clientAlgoId": stop_client_id},
+            )
+        try:
+            if self.target_order_type == "limit":
+                target_client_id = f"autobot-tp-limit-{uuid.uuid4().hex[:15]}"
+                try:
+                    target_order = self.signed(
+                        "POST",
+                        "/fapi/v1/order",
+                        {
+                            "symbol": symbol,
+                            "side": exit_side,
+                            "type": "LIMIT",
+                            "timeInForce": "GTX",
+                            "quantity": decimal_text(quantity),
+                            "price": decimal_text(target),
+                            "reduceOnly": "true",
+                            "newOrderRespType": "ACK",
+                            "newClientOrderId": target_client_id,
+                        },
+                    )
+                except BinanceAPIError as exc:
+                    if exc.status != 503:
+                        raise
+                    target_order = self.signed(
+                        "GET",
+                        "/fapi/v1/order",
+                        {"symbol": symbol, "origClientOrderId": target_client_id},
+                    )
+            else:
+                target_client_id = f"autobot-tp-{uuid.uuid4().hex[:20]}"
+                try:
+                    target_order = self.signed(
+                        "POST",
+                        "/fapi/v1/algoOrder",
+                        {
+                            **common,
+                            "type": "TAKE_PROFIT_MARKET",
+                            "triggerPrice": decimal_text(target),
+                            "clientAlgoId": target_client_id,
+                        },
+                    )
+                except BinanceAPIError as exc:
+                    if exc.status != 503:
+                        raise
+                    target_order = self.signed(
+                        "GET",
+                        "/fapi/v1/algoOrder",
+                        {"clientAlgoId": target_client_id},
+                    )
         except Exception:
             self.cancel_protection(symbol)
             raise
@@ -419,6 +525,7 @@ class BinanceFuturesBroker:
                 exit_side,
                 stop,
                 target,
+                quantity,
             )
         except Exception as exc:
             position = self.get_open_position(symbol)
@@ -437,8 +544,186 @@ class BinanceFuturesBroker:
             "entry_client_order_id": client_order_id,
             "stop_algo_id": stop_order.get("algoId"),
             "target_algo_id": target_order.get("algoId"),
+            "target_order_id": target_order.get("orderId"),
+            "target_order_type": self.target_order_type,
             "wallet_balance": str(wallet_balance),
             "opened_at_ms": int(time.time() * 1000),
+        }
+
+    def place_limit_entry(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        limit_price: float,
+        stop_distance: float,
+        target_distance: float,
+        risk_percent: float,
+        max_open_positions: int,
+    ) -> dict[str, Any]:
+        self.require_orders_enabled()
+        self.verify_one_way_mode()
+        if self.get_open_position(symbol):
+            raise ValueError(f"{symbol} already has an open Binance position.")
+        if len(self.get_open_positions()) >= max_open_positions:
+            raise ValueError("Maximum number of Binance positions reached.")
+        if limit_price <= 0 or stop_distance <= 0 or target_distance <= 0:
+            raise ValueError("Limit price, stop distance and target distance must be positive.")
+
+        self.cancel_protection(symbol)
+        self.set_symbol_risk(symbol)
+        balance = self.get_balance()
+        wallet_balance = Decimal(str(balance["balance"]))
+        available_balance = Decimal(str(balance["availableBalance"]))
+        if available_balance <= 0:
+            raise ValueError(f"No available {self.quote_asset} balance.")
+
+        rules = self.symbol_rules(symbol)
+        raw_price = Decimal(str(limit_price))
+        price = price_to_tick(raw_price, rules.price_tick, "down" if side == "long" else "up")
+        risk_cash = wallet_balance * Decimal(str(risk_percent)) / Decimal("100")
+        quantity = risk_cash / Decimal(str(stop_distance))
+        margin_cap_notional = available_balance * Decimal(str(self.leverage)) * Decimal("0.95")
+        quantity = min(quantity, margin_cap_notional / price)
+        quantity = min(floor_to_step(quantity, rules.quantity_step), rules.max_quantity)
+        if quantity < rules.min_quantity:
+            raise ValueError(
+                f"Calculated quantity {decimal_text(quantity)} is below Binance minimum "
+                f"{decimal_text(rules.min_quantity)}."
+            )
+        if rules.min_notional and quantity * price < rules.min_notional:
+            raise ValueError(
+                f"Order notional is below Binance minimum {decimal_text(rules.min_notional)} "
+                f"{self.quote_asset}."
+            )
+
+        client_order_id = f"autobot-limit-{uuid.uuid4().hex[:18]}"
+        params = {
+            "symbol": symbol,
+            "side": "BUY" if side == "long" else "SELL",
+            "type": "LIMIT",
+            "timeInForce": "GTX",
+            "quantity": decimal_text(quantity),
+            "price": decimal_text(price),
+            "newOrderRespType": "ACK",
+            "newClientOrderId": client_order_id,
+        }
+        try:
+            order = self.signed("POST", "/fapi/v1/order", params)
+        except BinanceAPIError as exc:
+            if exc.status != 503:
+                raise
+            order = self.signed(
+                "GET",
+                "/fapi/v1/order",
+                {"symbol": symbol, "origClientOrderId": client_order_id},
+            )
+        return {
+            "symbol": symbol,
+            "side": side,
+            "quantity": decimal_text(quantity),
+            "limit_price": decimal_text(price),
+            "entry_order_id": order.get("orderId"),
+            "entry_client_order_id": client_order_id,
+            "order_status": order.get("status", "NEW"),
+            "wallet_balance": str(wallet_balance),
+            "stop_distance": stop_distance,
+            "target_distance": target_distance,
+            "placed_at_ms": int(time.time() * 1000),
+        }
+
+    def get_entry_order(self, symbol: str, client_order_id: str) -> dict[str, Any]:
+        return dict(
+            self.signed(
+                "GET",
+                "/fapi/v1/order",
+                {"symbol": symbol, "origClientOrderId": client_order_id},
+            )
+        )
+
+    def cancel_entry_order(self, symbol: str, client_order_id: str) -> dict[str, Any]:
+        self.require_orders_enabled()
+        try:
+            return dict(
+                self.signed(
+                    "DELETE",
+                    "/fapi/v1/order",
+                    {"symbol": symbol, "origClientOrderId": client_order_id},
+                )
+            )
+        except BinanceAPIError as exc:
+            if exc.code not in (-2011, -2013):
+                raise
+            return self.get_entry_order(symbol, client_order_id)
+
+    def activate_limit_entry(
+        self,
+        *,
+        symbol: str,
+        side: str,
+        client_order_id: str,
+        stop_distance: float,
+        target_distance: float,
+    ) -> dict[str, Any]:
+        self.require_orders_enabled()
+        order = self.get_entry_order(symbol, client_order_id)
+        if str(order.get("status", "")).upper() != "FILLED":
+            return {"status": str(order.get("status", "UNKNOWN")).upper()}
+        position = self.get_open_position(symbol)
+        if not position:
+            raise RuntimeError(f"{symbol} limit order is filled but no Binance position was found.")
+
+        rules = self.symbol_rules(symbol)
+        entry_price = Decimal(str(order.get("avgPrice") or position["entryPrice"]))
+        quantity = abs(Decimal(str(position["positionAmt"])))
+        stop_delta = Decimal(str(stop_distance))
+        target_delta = Decimal(str(target_distance))
+        if side == "long":
+            stop = price_to_tick(entry_price - stop_delta, rules.price_tick, "down")
+            target = price_to_tick(entry_price + target_delta, rules.price_tick, "down")
+            exit_side = "SELL"
+        else:
+            stop = price_to_tick(entry_price + stop_delta, rules.price_tick, "up")
+            target = price_to_tick(entry_price - target_delta, rules.price_tick, "up")
+            exit_side = "BUY"
+        if stop <= 0 or target <= 0:
+            self.market_close(symbol, position)
+            raise ValueError("Calculated stop or target is invalid; emergency close sent.")
+
+        stop_order: dict[str, Any] = {}
+        target_order: dict[str, Any] = {}
+        if not self.has_stop_and_target(symbol):
+            try:
+                stop_order, target_order = self.place_protection(
+                    symbol,
+                    exit_side,
+                    stop,
+                    target,
+                    quantity,
+                )
+            except Exception as exc:
+                current = self.get_open_position(symbol)
+                if current:
+                    self.market_close(symbol, current)
+                raise RuntimeError(f"Protection failed; emergency close sent: {exc}") from exc
+
+        balance = self.get_balance()
+        return {
+            "status": "FILLED",
+            "symbol": symbol,
+            "side": side,
+            "quantity": decimal_text(quantity),
+            "entry": decimal_text(entry_price),
+            "stop": decimal_text(stop),
+            "target": decimal_text(target),
+            "entry_order_id": order.get("orderId"),
+            "entry_client_order_id": client_order_id,
+            "stop_algo_id": stop_order.get("algoId"),
+            "target_algo_id": target_order.get("algoId"),
+            "target_order_id": target_order.get("orderId"),
+            "target_order_type": self.target_order_type,
+            "wallet_balance": str(balance["balance"]),
+            "opened_at_ms": int(order.get("updateTime") or time.time() * 1000),
         }
 
     def realized_pnl_since(self, symbol: str, start_time_ms: int) -> dict[str, float]:

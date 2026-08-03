@@ -1,0 +1,18 @@
+{
+  "extends": "config.paper.asymmetric-15m.example.json",
+  "app": {
+    "name": "Crypto Autobot Asymmetric 15m MT5 Demo",
+    "data_dir": "crypto_autobot/data/asymmetric_15m_mt5_demo"
+  },
+  "broker": {
+    "provider": "mt5",
+    "mode": "demo",
+    "login_env": "MT5_LOGIN",
+    "password_env": "MT5_PASSWORD",
+    "server_env": "MT5_SERVER",
+    "terminal_path_env": "MT5_TERMINAL_PATH",
+    "magic": 260803,
+    "deviation_points": 20,
+    "symbol_map": {}
+  }
+}

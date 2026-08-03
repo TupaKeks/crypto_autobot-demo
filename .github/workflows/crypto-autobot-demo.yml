@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "17,47 * * * *"
+    - cron: "3,18,33,48 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -29,6 +29,9 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
+      - name: Install strategy dependencies
+        run: python3 -m pip install -r crypto_autobot/requirements-ml.txt
 
       - name: Check required secrets
         env:
@@ -62,32 +65,59 @@ jobs:
       - name: Run tests
         run: python3 -m unittest discover -s crypto_autobot/tests -v
 
+      - name: Verify Binance Demo readiness without orders
+        env:
+          BINANCE_DEMO_API_KEY: ${{ secrets.BINANCE_DEMO_API_KEY }}
+          BINANCE_DEMO_API_SECRET: ${{ secrets.BINANCE_DEMO_API_SECRET }}
+        run: |
+          set +e
+          python3 crypto_autobot/bot.py \
+            --config crypto_autobot/config.demo.asymmetric-15m.example.json \
+            --check > /tmp/binance-readiness.json
+          check_status=$?
+          set -e
+          python3 - "$check_status" <<'PY'
+          import json
+          import sys
+
+          status = int(sys.argv[1])
+          with open("/tmp/binance-readiness.json", encoding="utf-8") as handle:
+              result = json.load(handle)
+          symbols = result.get("symbols", [])
+          ready_symbols = sum(bool(item.get("ready")) for item in symbols)
+          print(
+              "Binance Demo readiness: "
+              f"ready={bool(result.get('ready'))}, "
+              f"environment={result.get('environment')}, "
+              f"symbols={ready_symbols}/{len(symbols)}, "
+              f"orders_sent={result.get('orders_sent')}"
+          )
+          if status or not result.get("ready") or result.get("orders_sent") != 0:
+              raise SystemExit(1)
+          PY
+
       - name: Scan Binance Demo
         env:
           BINANCE_DEMO_API_KEY: ${{ secrets.BINANCE_DEMO_API_KEY }}
           BINANCE_DEMO_API_SECRET: ${{ secrets.BINANCE_DEMO_API_SECRET }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          DEMO_ORDERS_ENABLED: ${{ vars.DEMO_ORDERS_ENABLED }}
         run: |
-          args=()
-          if [ "${DEMO_ORDERS_ENABLED,,}" = "true" ]; then
-            args+=(--enable-orders)
-          fi
           python3 crypto_autobot/github_runner.py \
-            --config crypto_autobot/config.demo.example.json \
-            --output crypto_autobot/github_pages/state.json \
-            "${args[@]}"
+            --config crypto_autobot/config.demo.asymmetric-15m.example.json \
+            --output crypto_autobot/github_pages/state.json
 
       - name: Encrypt current bot state
         if: always()
         env:
           STATE_ENCRYPTION_PASSWORD: ${{ secrets.STATE_ENCRYPTION_PASSWORD }}
         run: |
-          mkdir -p crypto_autobot/.runtime crypto_autobot/data
-          touch crypto_autobot/data/trades_demo.csv
-          if [ -f crypto_autobot/data/state_demo.json ]; then
-            tar -czf - -C crypto_autobot data/state_demo.json data/trades_demo.csv \
+          mkdir -p crypto_autobot/.runtime crypto_autobot/data/asymmetric_15m_demo
+          touch crypto_autobot/data/asymmetric_15m_demo/trades_demo.csv
+          if [ -f crypto_autobot/data/asymmetric_15m_demo/state_demo.json ]; then
+            tar -czf - -C crypto_autobot \
+              data/asymmetric_15m_demo/state_demo.json \
+              data/asymmetric_15m_demo/trades_demo.csv \
               | openssl enc -aes-256-cbc -salt -pbkdf2 \
                   -out crypto_autobot/.runtime/demo-state.tar.gz.enc \
                   -pass env:STATE_ENCRYPTION_PASSWORD

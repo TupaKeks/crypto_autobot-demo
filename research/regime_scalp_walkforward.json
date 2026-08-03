@@ -1,0 +1,46 @@
+{
+  "profile": "config.demo.regime-scalp.example.json",
+  "data_end_utc": "2026-08-02T19:45:00+00:00",
+  "timeframe": "15m",
+  "symbols": 15,
+  "assumptions": {
+    "maker_entry_fee_bps": 2.0,
+    "taker_exit_fee_bps": 5.0,
+    "exit_slippage_bps": 2.0,
+    "same_candle_policy": "stop_first",
+    "initial_balance": 10000.0,
+    "risk_per_trade_percent": 0.15
+  },
+  "train_180_days": {
+    "trades": 408,
+    "trades_per_day": 2.27,
+    "win_rate_percent": 47.06,
+    "target_reward_risk": 1.67,
+    "average_realized_r": 0.0908,
+    "profit_factor": 1.172,
+    "return_percent": 5.60,
+    "max_drawdown_percent": 4.42
+  },
+  "test_60_days": {
+    "trades": 135,
+    "trades_per_day": 2.25,
+    "win_rate_percent": 54.81,
+    "target_reward_risk": 1.67,
+    "average_realized_r": 0.2126,
+    "profit_factor": 1.458,
+    "return_percent": 4.36,
+    "max_drawdown_percent": 2.50
+  },
+  "rolling_60_day_windows": [
+    {"trades": 139, "profit_factor": 1.133, "return_percent": 1.40},
+    {"trades": 131, "profit_factor": 1.447, "return_percent": 4.26},
+    {"trades": 138, "profit_factor": 0.990, "return_percent": -0.11},
+    {"trades": 135, "profit_factor": 1.458, "return_percent": 4.36}
+  ],
+  "rejected_profiles": {
+    "forced_five_trades_per_day": "Rejected: train profit factor ranged from 0.76 to 0.87.",
+    "cross_sectional_momentum": "Rejected: profit factor stayed below 1 after costs.",
+    "five_minute_entry": "Rejected: positive recent results did not survive the earlier period."
+  },
+  "warning": "Historical results are research evidence, not a profit guarantee. Validate on Binance Demo before any live consideration."
+}

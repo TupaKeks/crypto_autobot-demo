@@ -1,0 +1,2144 @@
+{
+  "method": {
+    "description": "120d development, 60d validation, sealed 60d holdout on 5m candles",
+    "candidate_count": 96,
+    "symbols": [
+      "AAVEUSDT",
+      "ADAUSDT",
+      "APTUSDT",
+      "CRVUSDT",
+      "ETHUSDT",
+      "FILUSDT",
+      "NEARUSDT",
+      "RENDERUSDT",
+      "TAOUSDT",
+      "XLMUSDT"
+    ],
+    "generated_at": "2026-08-02T23:34:21+00:00"
+  },
+  "selected_on_development": {
+    "parameters": {
+      "regime_profile": "fast",
+      "pullback_lookback": 12,
+      "min_adx": 12.0,
+      "min_volume_factor": 1.0,
+      "min_body_ratio": 0.1,
+      "short_trigger_rsi": 55.0
+    },
+    "development": {
+      "trades": 501,
+      "trades_per_day": 4.17,
+      "win_rate": 42.51,
+      "profit_factor": 0.929,
+      "average_realized_r": -0.0418,
+      "return_percent": -3.25,
+      "max_drawdown_percent": 8.09
+    },
+    "profitable_months": 2,
+    "conservative_score": -0.086477
+  },
+  "strategy": {
+    "type": "intraday_regime_pullback",
+    "enabled": true,
+    "entry_order_type": "limit_retrace",
+    "entry_offset_atr": 0.1,
+    "entry_expiry_bars": 3,
+    "entry_fast_ema": 9,
+    "entry_slow_ema": 21,
+    "regime_fast_ema": 48,
+    "regime_slow_ema": 144,
+    "regime_slope_bars": 12,
+    "min_regime_slope_percent": 0.02,
+    "pullback_lookback": 12,
+    "pullback_tolerance_atr": 0.15,
+    "long_pullback_rsi": 40.0,
+    "short_pullback_rsi": 60.0,
+    "long_trigger_rsi": 45.0,
+    "short_trigger_rsi": 55.0,
+    "max_entry_extension_atr": 1.0,
+    "min_confirmation_body_ratio": 0.1,
+    "atr_length": 14,
+    "adx_length": 14,
+    "min_adx": 12.0,
+    "rsi_length": 14,
+    "long_rsi_min": 20.0,
+    "long_rsi_max": 80.0,
+    "short_rsi_min": 20.0,
+    "short_rsi_max": 80.0,
+    "volume_sma_length": 20,
+    "min_volume_factor": 1.0,
+    "min_atr_percent": 0.04,
+    "max_atr_percent": 3.0,
+    "band_length": 20,
+    "breakout_lookback": 20,
+    "stop_atr": 2.4,
+    "target_atr": 3.8,
+    "target_order_type": "limit",
+    "max_holding_bars": 72,
+    "cooldown_bars": 9,
+    "allow_shorts": true,
+    "trail_after_r": 99.0,
+    "trail_atr": 1.5,
+    "allow_longs": false
+  },
+  "validation_60d": {
+    "trades": 225,
+    "trades_per_day": 3.75,
+    "win_rate": 43.11,
+    "profit_factor": 0.944,
+    "average_realized_r": -0.0329,
+    "return_percent": -1.16,
+    "max_drawdown_percent": 3.93
+  },
+  "validation_stress_maker4_slippage3": {
+    "trades": 224,
+    "trades_per_day": 3.73,
+    "win_rate": 42.41,
+    "profit_factor": 0.852,
+    "average_realized_r": -0.0941,
+    "return_percent": -3.17,
+    "max_drawdown_percent": 5.33
+  },
+  "validation_months": [
+    {
+      "start_utc": "2026-04-04T19:49:34.645000+00:00",
+      "end_utc": "2026-05-04T19:49:34.645000+00:00",
+      "trades": 114,
+      "trades_per_day": 3.8,
+      "win_rate": 40.35,
+      "profit_factor": 0.838,
+      "average_realized_r": -0.1042,
+      "net_pnl": -178.65
+    },
+    {
+      "start_utc": "2026-05-04T19:49:34.645000+00:00",
+      "end_utc": "2026-06-03T19:49:34.645000+00:00",
+      "trades": 111,
+      "trades_per_day": 3.7,
+      "win_rate": 45.95,
+      "profit_factor": 1.064,
+      "average_realized_r": 0.0402,
+      "net_pnl": 62.43
+    }
+  ],
+  "validation_passed": false,
+  "holdout_opened": false,
+  "development_candidates": [
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 501,
+        "trades_per_day": 4.17,
+        "win_rate": 42.51,
+        "profit_factor": 0.929,
+        "average_realized_r": -0.0418,
+        "return_percent": -3.25,
+        "max_drawdown_percent": 8.09
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.086477
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 370,
+        "trades_per_day": 3.08,
+        "win_rate": 42.97,
+        "profit_factor": 0.941,
+        "average_realized_r": -0.0345,
+        "return_percent": -2.01,
+        "max_drawdown_percent": 5.82
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.086488
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 384,
+        "trades_per_day": 3.2,
+        "win_rate": 42.71,
+        "profit_factor": 0.933,
+        "average_realized_r": -0.0401,
+        "return_percent": -2.4,
+        "max_drawdown_percent": 5.9
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.091131
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 373,
+        "trades_per_day": 3.11,
+        "win_rate": 41.82,
+        "profit_factor": 0.932,
+        "average_realized_r": -0.0409,
+        "return_percent": -2.37,
+        "max_drawdown_percent": 6.79
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.092678
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 368,
+        "trades_per_day": 3.07,
+        "win_rate": 41.85,
+        "profit_factor": 0.932,
+        "average_realized_r": -0.0407,
+        "return_percent": -2.33,
+        "max_drawdown_percent": 6.63
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.092829
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 539,
+        "trades_per_day": 4.49,
+        "win_rate": 41.37,
+        "profit_factor": 0.914,
+        "average_realized_r": -0.0528,
+        "return_percent": -4.33,
+        "max_drawdown_percent": 8.75
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.095873
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 372,
+        "trades_per_day": 3.1,
+        "win_rate": 41.67,
+        "profit_factor": 0.926,
+        "average_realized_r": -0.0451,
+        "return_percent": -2.59,
+        "max_drawdown_percent": 7.0
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.096948
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 367,
+        "trades_per_day": 3.06,
+        "win_rate": 41.69,
+        "profit_factor": 0.926,
+        "average_realized_r": -0.0449,
+        "return_percent": -2.55,
+        "max_drawdown_percent": 6.84
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.0971
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 496,
+        "trades_per_day": 4.13,
+        "win_rate": 42.14,
+        "profit_factor": 0.913,
+        "average_realized_r": -0.0523,
+        "return_percent": -3.97,
+        "max_drawdown_percent": 8.11
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.097201
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 540,
+        "trades_per_day": 4.5,
+        "win_rate": 41.3,
+        "profit_factor": 0.911,
+        "average_realized_r": -0.0548,
+        "return_percent": -4.49,
+        "max_drawdown_percent": 8.91
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.097833
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 545,
+        "trades_per_day": 4.54,
+        "win_rate": 41.1,
+        "profit_factor": 0.91,
+        "average_realized_r": -0.0554,
+        "return_percent": -4.59,
+        "max_drawdown_percent": 9.11
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.098235
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 545,
+        "trades_per_day": 4.54,
+        "win_rate": 41.1,
+        "profit_factor": 0.91,
+        "average_realized_r": -0.0554,
+        "return_percent": -4.58,
+        "max_drawdown_percent": 9.11
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.098235
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 365,
+        "trades_per_day": 3.04,
+        "win_rate": 42.47,
+        "profit_factor": 0.919,
+        "average_realized_r": -0.0486,
+        "return_percent": -2.74,
+        "max_drawdown_percent": 6.01
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.100942
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 710,
+        "trades_per_day": 5.92,
+        "win_rate": 41.13,
+        "profit_factor": 0.896,
+        "average_realized_r": -0.0643,
+        "return_percent": -6.84,
+        "max_drawdown_percent": 9.92
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.101829
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 561,
+        "trades_per_day": 4.67,
+        "win_rate": 41.18,
+        "profit_factor": 0.901,
+        "average_realized_r": -0.0609,
+        "return_percent": -5.17,
+        "max_drawdown_percent": 8.94
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.10312
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 573,
+        "trades_per_day": 4.78,
+        "win_rate": 41.19,
+        "profit_factor": 0.899,
+        "average_realized_r": -0.0627,
+        "return_percent": -5.43,
+        "max_drawdown_percent": 8.81
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.104476
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 729,
+        "trades_per_day": 6.08,
+        "win_rate": 40.88,
+        "profit_factor": 0.89,
+        "average_realized_r": -0.0684,
+        "return_percent": -7.44,
+        "max_drawdown_percent": 10.53
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.105437
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 704,
+        "trades_per_day": 5.87,
+        "win_rate": 41.05,
+        "profit_factor": 0.891,
+        "average_realized_r": -0.068,
+        "return_percent": -7.14,
+        "max_drawdown_percent": 9.8
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.105689
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 526,
+        "trades_per_day": 4.38,
+        "win_rate": 41.44,
+        "profit_factor": 0.898,
+        "average_realized_r": -0.0624,
+        "return_percent": -4.97,
+        "max_drawdown_percent": 8.86
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.106002
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 773,
+        "trades_per_day": 6.44,
+        "win_rate": 40.49,
+        "profit_factor": 0.88,
+        "average_realized_r": -0.0734,
+        "return_percent": -8.39,
+        "max_drawdown_percent": 9.57
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.109368
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 378,
+        "trades_per_day": 3.15,
+        "win_rate": 42.06,
+        "profit_factor": 0.905,
+        "average_realized_r": -0.058,
+        "return_percent": -3.35,
+        "max_drawdown_percent": 6.39
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.109434
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 776,
+        "trades_per_day": 6.47,
+        "win_rate": 40.46,
+        "profit_factor": 0.88,
+        "average_realized_r": -0.074,
+        "return_percent": -8.48,
+        "max_drawdown_percent": 9.66
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.109898
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 722,
+        "trades_per_day": 6.02,
+        "win_rate": 40.72,
+        "profit_factor": 0.881,
+        "average_realized_r": -0.0743,
+        "return_percent": -7.95,
+        "max_drawdown_percent": 10.63
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.111516
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 553,
+        "trades_per_day": 4.61,
+        "win_rate": 40.87,
+        "profit_factor": 0.885,
+        "average_realized_r": -0.0718,
+        "return_percent": -5.95,
+        "max_drawdown_percent": 9.12
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.114324
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 636,
+        "trades_per_day": 5.3,
+        "win_rate": 40.09,
+        "profit_factor": 0.876,
+        "average_realized_r": -0.0758,
+        "return_percent": -7.15,
+        "max_drawdown_percent": 9.32
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.115453
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 602,
+        "trades_per_day": 5.02,
+        "win_rate": 41.03,
+        "profit_factor": 0.88,
+        "average_realized_r": -0.0747,
+        "return_percent": -6.7,
+        "max_drawdown_percent": 8.73
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.115457
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 639,
+        "trades_per_day": 5.33,
+        "win_rate": 40.06,
+        "profit_factor": 0.875,
+        "average_realized_r": -0.0764,
+        "return_percent": -7.25,
+        "max_drawdown_percent": 9.41
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.115959
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 616,
+        "trades_per_day": 5.13,
+        "win_rate": 41.07,
+        "profit_factor": 0.878,
+        "average_realized_r": -0.0757,
+        "return_percent": -6.94,
+        "max_drawdown_percent": 9.27
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.115991
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 476,
+        "trades_per_day": 3.97,
+        "win_rate": 41.18,
+        "profit_factor": 0.885,
+        "average_realized_r": -0.0705,
+        "return_percent": -5.04,
+        "max_drawdown_percent": 7.06
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.116335
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 645,
+        "trades_per_day": 5.38,
+        "win_rate": 40.16,
+        "profit_factor": 0.872,
+        "average_realized_r": -0.0786,
+        "return_percent": -7.51,
+        "max_drawdown_percent": 9.63
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.117975
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 564,
+        "trades_per_day": 4.7,
+        "win_rate": 40.78,
+        "profit_factor": 0.879,
+        "average_realized_r": -0.0763,
+        "return_percent": -6.42,
+        "max_drawdown_percent": 9.2
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.118408
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 470,
+        "trades_per_day": 3.92,
+        "win_rate": 40.85,
+        "profit_factor": 0.883,
+        "average_realized_r": -0.0724,
+        "return_percent": -5.11,
+        "max_drawdown_percent": 7.32
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.118527
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 648,
+        "trades_per_day": 5.4,
+        "win_rate": 40.12,
+        "profit_factor": 0.871,
+        "average_realized_r": -0.0793,
+        "return_percent": -7.6,
+        "max_drawdown_percent": 9.73
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.118584
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 604,
+        "trades_per_day": 5.03,
+        "win_rate": 40.89,
+        "profit_factor": 0.875,
+        "average_realized_r": -0.0781,
+        "return_percent": -7.02,
+        "max_drawdown_percent": 8.73
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.118789
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 618,
+        "trades_per_day": 5.15,
+        "win_rate": 40.94,
+        "profit_factor": 0.873,
+        "average_realized_r": -0.0791,
+        "return_percent": -7.25,
+        "max_drawdown_percent": 9.27
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.119326
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 520,
+        "trades_per_day": 4.33,
+        "win_rate": 40.96,
+        "profit_factor": 0.878,
+        "average_realized_r": -0.0757,
+        "return_percent": -5.9,
+        "max_drawdown_percent": 9.04
+      },
+      "profitable_months": 2,
+      "conservative_score": -0.119553
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 478,
+        "trades_per_day": 3.98,
+        "win_rate": 41.0,
+        "profit_factor": 0.879,
+        "average_realized_r": -0.0748,
+        "return_percent": -5.36,
+        "max_drawdown_percent": 7.37
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.120539
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 472,
+        "trades_per_day": 3.93,
+        "win_rate": 40.68,
+        "profit_factor": 0.876,
+        "average_realized_r": -0.0768,
+        "return_percent": -5.43,
+        "max_drawdown_percent": 7.63
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.122829
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 213,
+        "trades_per_day": 1.77,
+        "win_rate": 41.31,
+        "profit_factor": 0.91,
+        "average_realized_r": -0.0561,
+        "return_percent": -1.83,
+        "max_drawdown_percent": 3.53
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.124619
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 788,
+        "trades_per_day": 6.57,
+        "win_rate": 39.97,
+        "profit_factor": 0.856,
+        "average_realized_r": -0.0902,
+        "return_percent": -10.34,
+        "max_drawdown_percent": 11.5
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.125824
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 791,
+        "trades_per_day": 6.59,
+        "win_rate": 39.95,
+        "profit_factor": 0.855,
+        "average_realized_r": -0.0907,
+        "return_percent": -10.43,
+        "max_drawdown_percent": 11.59
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.126256
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 283,
+        "trades_per_day": 2.36,
+        "win_rate": 40.99,
+        "profit_factor": 0.891,
+        "average_realized_r": -0.0678,
+        "return_percent": -2.92,
+        "max_drawdown_percent": 5.41
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.127244
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 392,
+        "trades_per_day": 3.27,
+        "win_rate": 40.56,
+        "profit_factor": 0.877,
+        "average_realized_r": -0.0768,
+        "return_percent": -4.52,
+        "max_drawdown_percent": 7.37
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.127308
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 211,
+        "trades_per_day": 1.76,
+        "win_rate": 41.23,
+        "profit_factor": 0.907,
+        "average_realized_r": -0.0587,
+        "return_percent": -1.89,
+        "max_drawdown_percent": 3.75
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.127543
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 496,
+        "trades_per_day": 4.13,
+        "win_rate": 40.12,
+        "profit_factor": 0.869,
+        "average_realized_r": -0.0828,
+        "return_percent": -6.11,
+        "max_drawdown_percent": 8.78
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.127701
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 496,
+        "trades_per_day": 4.13,
+        "win_rate": 40.12,
+        "profit_factor": 0.869,
+        "average_realized_r": -0.0828,
+        "return_percent": -6.11,
+        "max_drawdown_percent": 8.78
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.127701
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 386,
+        "trades_per_day": 3.22,
+        "win_rate": 40.93,
+        "profit_factor": 0.877,
+        "average_realized_r": -0.0775,
+        "return_percent": -4.49,
+        "max_drawdown_percent": 5.82
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.128399
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 386,
+        "trades_per_day": 3.22,
+        "win_rate": 40.93,
+        "profit_factor": 0.877,
+        "average_realized_r": -0.0775,
+        "return_percent": -4.49,
+        "max_drawdown_percent": 5.82
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.128399
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 391,
+        "trades_per_day": 3.26,
+        "win_rate": 40.41,
+        "profit_factor": 0.871,
+        "average_realized_r": -0.0809,
+        "return_percent": -4.73,
+        "max_drawdown_percent": 7.37
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.131472
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 498,
+        "trades_per_day": 4.15,
+        "win_rate": 39.96,
+        "profit_factor": 0.863,
+        "average_realized_r": -0.087,
+        "return_percent": -6.43,
+        "max_drawdown_percent": 8.95
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.131811
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 498,
+        "trades_per_day": 4.15,
+        "win_rate": 39.96,
+        "profit_factor": 0.863,
+        "average_realized_r": -0.087,
+        "return_percent": -6.43,
+        "max_drawdown_percent": 8.95
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.131811
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 212,
+        "trades_per_day": 1.77,
+        "win_rate": 41.04,
+        "profit_factor": 0.9,
+        "average_realized_r": -0.0635,
+        "return_percent": -2.05,
+        "max_drawdown_percent": 3.53
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.13218
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 282,
+        "trades_per_day": 2.35,
+        "win_rate": 40.78,
+        "profit_factor": 0.883,
+        "average_realized_r": -0.0734,
+        "return_percent": -3.13,
+        "max_drawdown_percent": 5.41
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.132949
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 388,
+        "trades_per_day": 3.23,
+        "win_rate": 40.72,
+        "profit_factor": 0.869,
+        "average_realized_r": -0.0827,
+        "return_percent": -4.8,
+        "max_drawdown_percent": 6.03
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.133467
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 388,
+        "trades_per_day": 3.23,
+        "win_rate": 40.72,
+        "profit_factor": 0.869,
+        "average_realized_r": -0.0827,
+        "return_percent": -4.8,
+        "max_drawdown_percent": 6.03
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.133467
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 437,
+        "trades_per_day": 3.64,
+        "win_rate": 39.82,
+        "profit_factor": 0.866,
+        "average_realized_r": -0.0859,
+        "return_percent": -5.59,
+        "max_drawdown_percent": 8.11
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.133736
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 432,
+        "trades_per_day": 3.6,
+        "win_rate": 39.81,
+        "profit_factor": 0.865,
+        "average_realized_r": -0.0862,
+        "return_percent": -5.55,
+        "max_drawdown_percent": 8.06
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.134313
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 284,
+        "trades_per_day": 2.37,
+        "win_rate": 40.49,
+        "profit_factor": 0.882,
+        "average_realized_r": -0.0751,
+        "return_percent": -3.22,
+        "max_drawdown_percent": 4.0
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.134439
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 210,
+        "trades_per_day": 1.75,
+        "win_rate": 40.95,
+        "profit_factor": 0.896,
+        "average_realized_r": -0.0661,
+        "return_percent": -2.11,
+        "max_drawdown_percent": 3.75
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.135107
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 280,
+        "trades_per_day": 2.33,
+        "win_rate": 40.71,
+        "profit_factor": 0.88,
+        "average_realized_r": -0.0754,
+        "return_percent": -3.19,
+        "max_drawdown_percent": 5.5
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.135161
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 438,
+        "trades_per_day": 3.65,
+        "win_rate": 39.73,
+        "profit_factor": 0.862,
+        "average_realized_r": -0.0883,
+        "return_percent": -5.76,
+        "max_drawdown_percent": 8.26
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.136082
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 433,
+        "trades_per_day": 3.61,
+        "win_rate": 39.72,
+        "profit_factor": 0.862,
+        "average_realized_r": -0.0887,
+        "return_percent": -5.71,
+        "max_drawdown_percent": 8.22
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.136757
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 283,
+        "trades_per_day": 2.36,
+        "win_rate": 40.28,
+        "profit_factor": 0.874,
+        "average_realized_r": -0.0807,
+        "return_percent": -3.44,
+        "max_drawdown_percent": 4.0
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.140144
+    },
+    {
+      "parameters": {
+        "regime_profile": "fast",
+        "pullback_lookback": 12,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 279,
+        "trades_per_day": 2.33,
+        "win_rate": 40.5,
+        "profit_factor": 0.872,
+        "average_realized_r": -0.0811,
+        "return_percent": -3.41,
+        "max_drawdown_percent": 5.5
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.140968
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 278,
+        "trades_per_day": 2.32,
+        "win_rate": 40.29,
+        "profit_factor": 0.874,
+        "average_realized_r": -0.081,
+        "return_percent": -3.39,
+        "max_drawdown_percent": 4.49
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.140976
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 526,
+        "trades_per_day": 4.38,
+        "win_rate": 39.73,
+        "profit_factor": 0.847,
+        "average_realized_r": -0.0982,
+        "return_percent": -7.59,
+        "max_drawdown_percent": 9.48
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.141802
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 264,
+        "trades_per_day": 2.2,
+        "win_rate": 40.53,
+        "profit_factor": 0.874,
+        "average_realized_r": -0.0804,
+        "return_percent": -3.2,
+        "max_drawdown_percent": 5.07
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.141946
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 268,
+        "trades_per_day": 2.23,
+        "win_rate": 40.3,
+        "profit_factor": 0.87,
+        "average_realized_r": -0.0833,
+        "return_percent": -3.36,
+        "max_drawdown_percent": 4.86
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.144385
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 525,
+        "trades_per_day": 4.38,
+        "win_rate": 39.62,
+        "profit_factor": 0.843,
+        "average_realized_r": -0.1013,
+        "return_percent": -7.8,
+        "max_drawdown_percent": 9.48
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.144944
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 565,
+        "trades_per_day": 4.71,
+        "win_rate": 39.47,
+        "profit_factor": 0.837,
+        "average_realized_r": -0.1043,
+        "return_percent": -8.61,
+        "max_drawdown_percent": 10.29
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.14637
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 277,
+        "trades_per_day": 2.31,
+        "win_rate": 40.07,
+        "profit_factor": 0.866,
+        "average_realized_r": -0.0867,
+        "return_percent": -3.61,
+        "max_drawdown_percent": 4.49
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.146784
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 263,
+        "trades_per_day": 2.19,
+        "win_rate": 40.3,
+        "profit_factor": 0.866,
+        "average_realized_r": -0.0865,
+        "return_percent": -3.42,
+        "max_drawdown_percent": 5.07
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.148163
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 521,
+        "trades_per_day": 4.34,
+        "win_rate": 39.35,
+        "profit_factor": 0.835,
+        "average_realized_r": -0.105,
+        "return_percent": -8.02,
+        "max_drawdown_percent": 10.04
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.148811
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 12.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 564,
+        "trades_per_day": 4.7,
+        "win_rate": 39.36,
+        "profit_factor": 0.834,
+        "average_realized_r": -0.1072,
+        "return_percent": -8.82,
+        "max_drawdown_percent": 10.29
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.149308
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 267,
+        "trades_per_day": 2.23,
+        "win_rate": 40.07,
+        "profit_factor": 0.862,
+        "average_realized_r": -0.0892,
+        "return_percent": -3.57,
+        "max_drawdown_percent": 4.86
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.150399
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 356,
+        "trades_per_day": 2.97,
+        "win_rate": 39.61,
+        "profit_factor": 0.85,
+        "average_realized_r": -0.0978,
+        "return_percent": -5.18,
+        "max_drawdown_percent": 6.09
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.1508
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 520,
+        "trades_per_day": 4.33,
+        "win_rate": 39.23,
+        "profit_factor": 0.831,
+        "average_realized_r": -0.1081,
+        "return_percent": -8.23,
+        "max_drawdown_percent": 10.04
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.151953
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 407,
+        "trades_per_day": 3.39,
+        "win_rate": 39.56,
+        "profit_factor": 0.838,
+        "average_realized_r": -0.1035,
+        "return_percent": -6.23,
+        "max_drawdown_percent": 8.88
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.153068
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 684,
+        "trades_per_day": 5.7,
+        "win_rate": 38.89,
+        "profit_factor": 0.823,
+        "average_realized_r": -0.115,
+        "return_percent": -11.31,
+        "max_drawdown_percent": 11.91
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.153236
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 717,
+        "trades_per_day": 5.97,
+        "win_rate": 38.63,
+        "profit_factor": 0.819,
+        "average_realized_r": -0.1173,
+        "return_percent": -12.04,
+        "max_drawdown_percent": 12.16
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.154646
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 355,
+        "trades_per_day": 2.96,
+        "win_rate": 39.44,
+        "profit_factor": 0.844,
+        "average_realized_r": -0.1023,
+        "return_percent": -5.39,
+        "max_drawdown_percent": 6.3
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.155374
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 683,
+        "trades_per_day": 5.69,
+        "win_rate": 38.8,
+        "profit_factor": 0.82,
+        "average_realized_r": -0.1174,
+        "return_percent": -11.51,
+        "max_drawdown_percent": 11.91
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.155664
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 716,
+        "trades_per_day": 5.97,
+        "win_rate": 38.55,
+        "profit_factor": 0.816,
+        "average_realized_r": -0.1196,
+        "return_percent": -12.24,
+        "max_drawdown_percent": 12.36
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.156972
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 347,
+        "trades_per_day": 2.89,
+        "win_rate": 39.48,
+        "profit_factor": 0.842,
+        "average_realized_r": -0.1034,
+        "return_percent": -5.33,
+        "max_drawdown_percent": 6.61
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.157083
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 406,
+        "trades_per_day": 3.38,
+        "win_rate": 39.41,
+        "profit_factor": 0.832,
+        "average_realized_r": -0.1075,
+        "return_percent": -6.44,
+        "max_drawdown_percent": 8.88
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.157129
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 24,
+        "min_adx": 12.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 346,
+        "trades_per_day": 2.88,
+        "win_rate": 39.31,
+        "profit_factor": 0.836,
+        "average_realized_r": -0.1081,
+        "return_percent": -5.54,
+        "max_drawdown_percent": 6.61
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.16186
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 543,
+        "trades_per_day": 4.53,
+        "win_rate": 38.67,
+        "profit_factor": 0.815,
+        "average_realized_r": -0.1196,
+        "return_percent": -9.43,
+        "max_drawdown_percent": 11.15
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.162514
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 309,
+        "trades_per_day": 2.58,
+        "win_rate": 39.81,
+        "profit_factor": 0.833,
+        "average_realized_r": -0.1068,
+        "return_percent": -4.91,
+        "max_drawdown_percent": 6.53
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.163688
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 309,
+        "trades_per_day": 2.58,
+        "win_rate": 39.81,
+        "profit_factor": 0.833,
+        "average_realized_r": -0.1068,
+        "return_percent": -4.91,
+        "max_drawdown_percent": 6.53
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.163688
+    },
+    {
+      "parameters": {
+        "regime_profile": "scaled",
+        "pullback_lookback": 36,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 55.0
+      },
+      "development": {
+        "trades": 542,
+        "trades_per_day": 4.52,
+        "win_rate": 38.56,
+        "profit_factor": 0.81,
+        "average_realized_r": -0.1226,
+        "return_percent": -9.64,
+        "max_drawdown_percent": 11.15
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.165554
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 404,
+        "trades_per_day": 3.37,
+        "win_rate": 38.86,
+        "profit_factor": 0.814,
+        "average_realized_r": -0.1198,
+        "return_percent": -7.1,
+        "max_drawdown_percent": 8.9
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.169552
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 18,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 404,
+        "trades_per_day": 3.37,
+        "win_rate": 38.86,
+        "profit_factor": 0.814,
+        "average_realized_r": -0.1198,
+        "return_percent": -7.1,
+        "max_drawdown_percent": 8.9
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.169552
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 311,
+        "trades_per_day": 2.59,
+        "win_rate": 39.55,
+        "profit_factor": 0.824,
+        "average_realized_r": -0.1131,
+        "return_percent": -5.21,
+        "max_drawdown_percent": 6.83
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.169805
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 1.0,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 311,
+        "trades_per_day": 2.59,
+        "win_rate": 39.55,
+        "profit_factor": 0.824,
+        "average_realized_r": -0.1131,
+        "return_percent": -5.21,
+        "max_drawdown_percent": 6.83
+      },
+      "profitable_months": 1,
+      "conservative_score": -0.169805
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.1,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 405,
+        "trades_per_day": 3.38,
+        "win_rate": 38.77,
+        "profit_factor": 0.811,
+        "average_realized_r": -0.1221,
+        "return_percent": -7.25,
+        "max_drawdown_percent": 9.04
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.17179
+    },
+    {
+      "parameters": {
+        "regime_profile": "medium",
+        "pullback_lookback": 24,
+        "min_adx": 18.0,
+        "min_volume_factor": 0.7,
+        "min_body_ratio": 0.25,
+        "short_trigger_rsi": 58.0
+      },
+      "development": {
+        "trades": 405,
+        "trades_per_day": 3.38,
+        "win_rate": 38.77,
+        "profit_factor": 0.811,
+        "average_realized_r": -0.1221,
+        "return_percent": -7.25,
+        "max_drawdown_percent": 9.04
+      },
+      "profitable_months": 0,
+      "conservative_score": -0.17179
+    }
+  ]
+}

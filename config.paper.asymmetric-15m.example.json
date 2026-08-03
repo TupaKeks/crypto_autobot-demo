@@ -1,0 +1,29 @@
+{
+  "extends": "config.paper.ensemble-15m.example.json",
+  "app": {
+    "name": "Crypto Autobot Asymmetric 15m Paper",
+    "scan_interval_seconds": 15,
+    "data_dir": "crypto_autobot/data/asymmetric_15m_paper"
+  },
+  "market": {
+    "symbols": [
+      "AAVEUSDT", "ADAUSDT", "APTUSDT", "CRVUSDT", "ETHUSDT",
+      "FILUSDT", "NEARUSDT", "RENDERUSDT", "TAOUSDT", "XLMUSDT"
+    ]
+  },
+  "strategy": {
+    "allow_longs": true,
+    "allow_shorts": true
+  },
+  "ensemble": {
+    "enabled": false
+  },
+  "account": {
+    "risk_per_trade_percent": 0.15,
+    "short_risk_per_trade_percent": 0.15,
+    "long_risk_per_trade_percent": 0.025,
+    "max_open_positions": 4,
+    "max_daily_trades": 12,
+    "max_daily_loss_percent": 1.2
+  }
+}

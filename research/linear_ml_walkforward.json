@@ -1,0 +1,754 @@
+{
+  "method": {
+    "model": "pooled ridge regression with symbol fixed effects",
+    "training_days": 120,
+    "rebalance_days": 30,
+    "features": "price returns, EMA distances, ATR, RSI, ADX, volume, candle body, BTC regime, UTC hour",
+    "execution": "next 15m open; 1.5 ATR stop; 3 ATR target; stop-first; market costs",
+    "costs_bps": {
+      "fee_each_side": 5.0,
+      "slippage_each_side": 2.0
+    }
+  },
+  "dates": {
+    "validation_start": "2025-10-06T19:45:00+00:00",
+    "holdout_start": "2026-06-03T19:45:00+00:00",
+    "holdout_end": "2026-08-02T19:45:00+00:00"
+  },
+  "validation_grid_240d": [
+    {
+      "horizon_bars": 4,
+      "signal_quantile": 0.99,
+      "trades": 635,
+      "trades_per_day": 2.65,
+      "win_rate": 46.14,
+      "profit_factor": 0.933,
+      "average_realized_r": -0.0248,
+      "return_percent": -2.43,
+      "max_drawdown_percent": 4.23
+    },
+    {
+      "horizon_bars": 4,
+      "signal_quantile": 0.9925,
+      "trades": 562,
+      "trades_per_day": 2.34,
+      "win_rate": 44.84,
+      "profit_factor": 0.876,
+      "average_realized_r": -0.0462,
+      "return_percent": -3.9,
+      "max_drawdown_percent": 6.17
+    },
+    {
+      "horizon_bars": 4,
+      "signal_quantile": 0.995,
+      "trades": 424,
+      "trades_per_day": 1.77,
+      "win_rate": 43.4,
+      "profit_factor": 0.815,
+      "average_realized_r": -0.0693,
+      "return_percent": -4.37,
+      "max_drawdown_percent": 5.3
+    },
+    {
+      "horizon_bars": 8,
+      "signal_quantile": 0.99,
+      "trades": 595,
+      "trades_per_day": 2.48,
+      "win_rate": 44.87,
+      "profit_factor": 0.906,
+      "average_realized_r": -0.0419,
+      "return_percent": -3.77,
+      "max_drawdown_percent": 6.43
+    },
+    {
+      "horizon_bars": 8,
+      "signal_quantile": 0.9925,
+      "trades": 506,
+      "trades_per_day": 2.11,
+      "win_rate": 44.47,
+      "profit_factor": 0.886,
+      "average_realized_r": -0.0505,
+      "return_percent": -3.84,
+      "max_drawdown_percent": 5.23
+    },
+    {
+      "horizon_bars": 8,
+      "signal_quantile": 0.995,
+      "trades": 373,
+      "trades_per_day": 1.55,
+      "win_rate": 47.72,
+      "profit_factor": 0.954,
+      "average_realized_r": -0.0188,
+      "return_percent": -1.11,
+      "max_drawdown_percent": 4.49
+    },
+    {
+      "horizon_bars": 16,
+      "signal_quantile": 0.99,
+      "trades": 640,
+      "trades_per_day": 2.67,
+      "win_rate": 42.66,
+      "profit_factor": 0.933,
+      "average_realized_r": -0.0379,
+      "return_percent": -3.74,
+      "max_drawdown_percent": 10.38
+    },
+    {
+      "horizon_bars": 16,
+      "signal_quantile": 0.9925,
+      "trades": 519,
+      "trades_per_day": 2.16,
+      "win_rate": 44.12,
+      "profit_factor": 1.028,
+      "average_realized_r": 0.0181,
+      "return_percent": 1.26,
+      "max_drawdown_percent": 7.52
+    },
+    {
+      "horizon_bars": 16,
+      "signal_quantile": 0.995,
+      "trades": 381,
+      "trades_per_day": 1.59,
+      "win_rate": 43.57,
+      "profit_factor": 1.062,
+      "average_realized_r": 0.0377,
+      "return_percent": 2.06,
+      "max_drawdown_percent": 5.47
+    }
+  ],
+  "selected_config": {
+    "horizon_bars": 16,
+    "signal_quantile": 0.995
+  },
+  "final_holdout_60d": {
+    "trades": 62,
+    "trades_per_day": 1.03,
+    "win_rate": 33.87,
+    "profit_factor": 0.581,
+    "average_realized_r": -0.2671,
+    "return_percent": -2.46,
+    "max_drawdown_percent": 3.43
+  },
+  "trade_log": [
+    {
+      "symbol": "FILUSDT",
+      "side": "short",
+      "entry_time": 1780541100000,
+      "exit_time": 1780554600000,
+      "net_pnl": -3.148,
+      "realized_r": -0.2099,
+      "reason": "time",
+      "prediction": -0.00476126
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "short",
+      "entry_time": 1780557300000,
+      "exit_time": 1780570800000,
+      "net_pnl": 10.1604,
+      "realized_r": 0.6776,
+      "reason": "time",
+      "prediction": -0.00664813
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "side": "short",
+      "entry_time": 1780558200000,
+      "exit_time": 1780570800000,
+      "net_pnl": 29.3214,
+      "realized_r": 1.9554,
+      "reason": "target",
+      "prediction": -0.00453759
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1780577100000,
+      "exit_time": 1780578900000,
+      "net_pnl": -15.5836,
+      "realized_r": -1.0351,
+      "reason": "stop",
+      "prediction": 0.00450868
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "side": "long",
+      "entry_time": 1780587900000,
+      "exit_time": 1780601400000,
+      "net_pnl": 1.0128,
+      "realized_r": 0.0674,
+      "reason": "time",
+      "prediction": 0.00489695
+    },
+    {
+      "symbol": "FILUSDT",
+      "side": "long",
+      "entry_time": 1780589700000,
+      "exit_time": 1780603200000,
+      "net_pnl": 0.6739,
+      "realized_r": 0.0448,
+      "reason": "time",
+      "prediction": 0.0044322
+    },
+    {
+      "symbol": "ADAUSDT",
+      "side": "short",
+      "entry_time": 1780628400000,
+      "exit_time": 1780634700000,
+      "net_pnl": -15.7432,
+      "realized_r": -1.0472,
+      "reason": "stop",
+      "prediction": -0.00450329
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1780643700000,
+      "exit_time": 1780657200000,
+      "net_pnl": 6.3607,
+      "realized_r": 0.4238,
+      "reason": "time",
+      "prediction": 0.00643338
+    },
+    {
+      "symbol": "CRVUSDT",
+      "side": "short",
+      "entry_time": 1780644600000,
+      "exit_time": 1780658100000,
+      "net_pnl": -9.1834,
+      "realized_r": -0.6118,
+      "reason": "time",
+      "prediction": -0.00456097
+    },
+    {
+      "symbol": "FILUSDT",
+      "side": "short",
+      "entry_time": 1780648200000,
+      "exit_time": 1780661700000,
+      "net_pnl": 5.4728,
+      "realized_r": 0.3646,
+      "reason": "time",
+      "prediction": -0.00442933
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "side": "short",
+      "entry_time": 1780668900000,
+      "exit_time": 1780673400000,
+      "net_pnl": 29.1669,
+      "realized_r": 1.9426,
+      "reason": "target",
+      "prediction": -0.00504536
+    },
+    {
+      "symbol": "XLMUSDT",
+      "side": "long",
+      "entry_time": 1780686900000,
+      "exit_time": 1780691400000,
+      "net_pnl": 29.3711,
+      "realized_r": 1.9506,
+      "reason": "target",
+      "prediction": 0.00503397
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "side": "short",
+      "entry_time": 1780723800000,
+      "exit_time": 1780724700000,
+      "net_pnl": -15.9503,
+      "realized_r": -1.0562,
+      "reason": "stop",
+      "prediction": -0.00543645
+    },
+    {
+      "symbol": "APTUSDT",
+      "side": "short",
+      "entry_time": 1780723800000,
+      "exit_time": 1780726500000,
+      "net_pnl": -15.8806,
+      "realized_r": -1.0516,
+      "reason": "stop",
+      "prediction": -0.00642493
+    },
+    {
+      "symbol": "FILUSDT",
+      "side": "short",
+      "entry_time": 1780723800000,
+      "exit_time": 1780729200000,
+      "net_pnl": -15.7601,
+      "realized_r": -1.0437,
+      "reason": "stop",
+      "prediction": -0.00540747
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "side": "long",
+      "entry_time": 1780737300000,
+      "exit_time": 1780739100000,
+      "net_pnl": -16.2713,
+      "realized_r": -1.0826,
+      "reason": "stop",
+      "prediction": 0.00456432
+    },
+    {
+      "symbol": "APTUSDT",
+      "side": "long",
+      "entry_time": 1780737300000,
+      "exit_time": 1780739100000,
+      "net_pnl": -16.2771,
+      "realized_r": -1.083,
+      "reason": "stop",
+      "prediction": 0.00447112
+    },
+    {
+      "symbol": "FILUSDT",
+      "side": "long",
+      "entry_time": 1780737300000,
+      "exit_time": 1780740000000,
+      "net_pnl": -16.0138,
+      "realized_r": -1.0654,
+      "reason": "stop",
+      "prediction": 0.00518313
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1780848000000,
+      "exit_time": 1780859700000,
+      "net_pnl": -15.6933,
+      "realized_r": -1.0492,
+      "reason": "stop",
+      "prediction": 0.00522565
+    },
+    {
+      "symbol": "APTUSDT",
+      "side": "short",
+      "entry_time": 1780870500000,
+      "exit_time": 1780880400000,
+      "net_pnl": 28.7411,
+      "realized_r": 1.9246,
+      "reason": "target",
+      "prediction": -0.00451676
+    },
+    {
+      "symbol": "ADAUSDT",
+      "side": "short",
+      "entry_time": 1780870500000,
+      "exit_time": 1780882200000,
+      "net_pnl": 28.7589,
+      "realized_r": 1.9257,
+      "reason": "target",
+      "prediction": -0.00454321
+    },
+    {
+      "symbol": "APTUSDT",
+      "side": "short",
+      "entry_time": 1780978500000,
+      "exit_time": 1780979400000,
+      "net_pnl": -16.5614,
+      "realized_r": -1.1026,
+      "reason": "stop",
+      "prediction": -0.00453273
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1780992900000,
+      "exit_time": 1781006400000,
+      "net_pnl": 5.6022,
+      "realized_r": 0.3736,
+      "reason": "time",
+      "prediction": 0.00504269
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1781038800000,
+      "exit_time": 1781040600000,
+      "net_pnl": -15.7418,
+      "realized_r": -1.0492,
+      "reason": "stop",
+      "prediction": 0.00443569
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1781109000000,
+      "exit_time": 1781122500000,
+      "net_pnl": -9.8119,
+      "realized_r": -0.655,
+      "reason": "time",
+      "prediction": 0.00444017
+    },
+    {
+      "symbol": "CRVUSDT",
+      "side": "long",
+      "entry_time": 1781154900000,
+      "exit_time": 1781167500000,
+      "net_pnl": 29.2608,
+      "realized_r": 1.9552,
+      "reason": "target",
+      "prediction": 0.00446966
+    },
+    {
+      "symbol": "CRVUSDT",
+      "side": "short",
+      "entry_time": 1781250300000,
+      "exit_time": 1781263800000,
+      "net_pnl": 11.3018,
+      "realized_r": 0.753,
+      "reason": "time",
+      "prediction": -0.00447091
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1781260200000,
+      "exit_time": 1781273700000,
+      "net_pnl": -4.876,
+      "realized_r": -0.3249,
+      "reason": "time",
+      "prediction": 0.0052076
+    },
+    {
+      "symbol": "TAOUSDT",
+      "side": "long",
+      "entry_time": 1781343900000,
+      "exit_time": 1781357400000,
+      "net_pnl": 17.6984,
+      "realized_r": 1.1784,
+      "reason": "time",
+      "prediction": 0.00530007
+    },
+    {
+      "symbol": "TAOUSDT",
+      "side": "long",
+      "entry_time": 1781373600000,
+      "exit_time": 1781376300000,
+      "net_pnl": -15.5443,
+      "realized_r": -1.0332,
+      "reason": "stop",
+      "prediction": 0.00660371
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1781367300000,
+      "exit_time": 1781380800000,
+      "net_pnl": -9.0235,
+      "realized_r": -0.5997,
+      "reason": "time",
+      "prediction": 0.00539087
+    },
+    {
+      "symbol": "TAOUSDT",
+      "side": "short",
+      "entry_time": 1781386200000,
+      "exit_time": 1781386200000,
+      "net_pnl": -15.9487,
+      "realized_r": -1.0626,
+      "reason": "stop",
+      "prediction": -0.00628242
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "side": "short",
+      "entry_time": 1781423100000,
+      "exit_time": 1781424900000,
+      "net_pnl": -18.1133,
+      "realized_r": -1.2088,
+      "reason": "stop",
+      "prediction": -0.00471978
+    },
+    {
+      "symbol": "ADAUSDT",
+      "side": "long",
+      "entry_time": 1781483400000,
+      "exit_time": 1781491500000,
+      "net_pnl": -15.7636,
+      "realized_r": -1.0539,
+      "reason": "stop",
+      "prediction": 0.00467997
+    },
+    {
+      "symbol": "TAOUSDT",
+      "side": "long",
+      "entry_time": 1781513100000,
+      "exit_time": 1781514000000,
+      "net_pnl": -15.4052,
+      "realized_r": -1.0316,
+      "reason": "stop",
+      "prediction": 0.00521943
+    },
+    {
+      "symbol": "XLMUSDT",
+      "side": "long",
+      "entry_time": 1781538300000,
+      "exit_time": 1781551800000,
+      "net_pnl": -1.0405,
+      "realized_r": -0.0698,
+      "reason": "time",
+      "prediction": 0.00459832
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "side": "short",
+      "entry_time": 1781553600000,
+      "exit_time": 1781567100000,
+      "net_pnl": 10.2905,
+      "realized_r": 0.6902,
+      "reason": "time",
+      "prediction": -0.00467906
+    },
+    {
+      "symbol": "XLMUSDT",
+      "side": "short",
+      "entry_time": 1781567100000,
+      "exit_time": 1781568000000,
+      "net_pnl": -15.9025,
+      "realized_r": -1.0667,
+      "reason": "stop",
+      "prediction": -0.00477805
+    },
+    {
+      "symbol": "ADAUSDT",
+      "side": "short",
+      "entry_time": 1781564400000,
+      "exit_time": 1781577900000,
+      "net_pnl": 9.9942,
+      "realized_r": 0.6704,
+      "reason": "time",
+      "prediction": -0.00455231
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1781607600000,
+      "exit_time": 1781611200000,
+      "net_pnl": -15.8401,
+      "realized_r": -1.062,
+      "reason": "stop",
+      "prediction": 0.00474179
+    },
+    {
+      "symbol": "XLMUSDT",
+      "side": "long",
+      "entry_time": 1781747100000,
+      "exit_time": 1781752500000,
+      "net_pnl": -15.637,
+      "realized_r": -1.05,
+      "reason": "stop",
+      "prediction": 0.00461628
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1781778600000,
+      "exit_time": 1781781300000,
+      "net_pnl": -16.4576,
+      "realized_r": -1.1069,
+      "reason": "stop",
+      "prediction": 0.00453898
+    },
+    {
+      "symbol": "XLMUSDT",
+      "side": "long",
+      "entry_time": 1781776800000,
+      "exit_time": 1781788500000,
+      "net_pnl": 28.8094,
+      "realized_r": 1.9376,
+      "reason": "target",
+      "prediction": 0.0045077
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1781796600000,
+      "exit_time": 1781797500000,
+      "net_pnl": -15.6467,
+      "realized_r": -1.051,
+      "reason": "stop",
+      "prediction": 0.00572075
+    },
+    {
+      "symbol": "XLMUSDT",
+      "side": "long",
+      "entry_time": 1781796600000,
+      "exit_time": 1781803800000,
+      "net_pnl": -15.4749,
+      "realized_r": -1.0395,
+      "reason": "stop",
+      "prediction": 0.00486137
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "side": "short",
+      "entry_time": 1781844300000,
+      "exit_time": 1781847900000,
+      "net_pnl": -16.336,
+      "realized_r": -1.1008,
+      "reason": "stop",
+      "prediction": -0.00450782
+    },
+    {
+      "symbol": "APTUSDT",
+      "side": "long",
+      "entry_time": 1782338400000,
+      "exit_time": 1782348300000,
+      "net_pnl": -16.1764,
+      "realized_r": -1.0918,
+      "reason": "stop",
+      "prediction": 0.00455553
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1782344700000,
+      "exit_time": 1782352800000,
+      "net_pnl": -16.7211,
+      "realized_r": -1.1286,
+      "reason": "stop",
+      "prediction": 0.00454659
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "side": "short",
+      "entry_time": 1782378000000,
+      "exit_time": 1782379800000,
+      "net_pnl": -15.8904,
+      "realized_r": -1.0761,
+      "reason": "stop",
+      "prediction": -0.00459179
+    },
+    {
+      "symbol": "FILUSDT",
+      "side": "long",
+      "entry_time": 1782396000000,
+      "exit_time": 1782396000000,
+      "net_pnl": 28.6615,
+      "realized_r": 1.9441,
+      "reason": "target",
+      "prediction": 0.00446659
+    },
+    {
+      "symbol": "APTUSDT",
+      "side": "short",
+      "entry_time": 1782396900000,
+      "exit_time": 1782409500000,
+      "net_pnl": -15.5315,
+      "realized_r": -1.0504,
+      "reason": "stop",
+      "prediction": -0.00449265
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "side": "long",
+      "entry_time": 1782410400000,
+      "exit_time": 1782412200000,
+      "net_pnl": -15.8468,
+      "realized_r": -1.0734,
+      "reason": "stop",
+      "prediction": 0.00462845
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "side": "long",
+      "entry_time": 1782500400000,
+      "exit_time": 1782511200000,
+      "net_pnl": -15.3398,
+      "realized_r": -1.0408,
+      "reason": "stop",
+      "prediction": 0.00456413
+    },
+    {
+      "symbol": "AAVEUSDT",
+      "side": "short",
+      "entry_time": 1782542700000,
+      "exit_time": 1782546300000,
+      "net_pnl": -15.7844,
+      "realized_r": -1.0726,
+      "reason": "stop",
+      "prediction": -0.00460516
+    },
+    {
+      "symbol": "NEARUSDT",
+      "side": "long",
+      "entry_time": 1782580500000,
+      "exit_time": 1782587700000,
+      "net_pnl": -15.7089,
+      "realized_r": -1.0692,
+      "reason": "stop",
+      "prediction": 0.00503001
+    },
+    {
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "entry_time": 1782785700000,
+      "exit_time": 1782799200000,
+      "net_pnl": -7.3112,
+      "realized_r": -0.4984,
+      "reason": "time",
+      "prediction": -0.0046319
+    },
+    {
+      "symbol": "XLMUSDT",
+      "side": "long",
+      "entry_time": 1782877500000,
+      "exit_time": 1782885600000,
+      "net_pnl": -15.2528,
+      "realized_r": -1.0406,
+      "reason": "stop",
+      "prediction": 0.00445882
+    },
+    {
+      "symbol": "CRVUSDT",
+      "side": "short",
+      "entry_time": 1782971100000,
+      "exit_time": 1782984600000,
+      "net_pnl": -16.2549,
+      "realized_r": -1.1107,
+      "reason": "stop",
+      "prediction": -0.00488121
+    },
+    {
+      "symbol": "CRVUSDT",
+      "side": "short",
+      "entry_time": 1783065600000,
+      "exit_time": 1783067400000,
+      "net_pnl": -17.1981,
+      "realized_r": -1.1771,
+      "reason": "stop",
+      "prediction": -0.00517812
+    },
+    {
+      "symbol": "ADAUSDT",
+      "side": "short",
+      "entry_time": 1783354500000,
+      "exit_time": 1783368000000,
+      "net_pnl": 11.7278,
+      "realized_r": 0.8041,
+      "reason": "time",
+      "prediction": -0.00763349
+    },
+    {
+      "symbol": "ETHUSDT",
+      "side": "short",
+      "entry_time": 1783354500000,
+      "exit_time": 1783368000000,
+      "net_pnl": 6.9792,
+      "realized_r": 0.4786,
+      "reason": "time",
+      "prediction": -0.00663245
+    },
+    {
+      "symbol": "FILUSDT",
+      "side": "short",
+      "entry_time": 1783357200000,
+      "exit_time": 1783370700000,
+      "net_pnl": 11.8567,
+      "realized_r": 0.8131,
+      "reason": "time",
+      "prediction": -0.00730544
+    }
+  ]
+}

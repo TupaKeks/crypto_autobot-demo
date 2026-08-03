@@ -22,12 +22,30 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 try:
+    from .broker_interface import BrokerAdapter
     from .binance_futures import BinanceFuturesBroker, LIVE_CONFIRMATION
+    from .mt5_broker import MT5Broker
+    from .strategy_intraday import build_indicators as build_intraday_indicators
+    from .strategy_intraday import evaluate_strategy_signal, minimum_history as intraday_minimum_history
+    from .orderflow_model import evaluate_orderflow_signal, model_status as orderflow_model_status
 except ImportError:
+    from broker_interface import BrokerAdapter
     from binance_futures import BinanceFuturesBroker, LIVE_CONFIRMATION
+    from mt5_broker import MT5Broker
+    from strategy_intraday import build_indicators as build_intraday_indicators
+    from strategy_intraday import evaluate_strategy_signal, minimum_history as intraday_minimum_history
+    from orderflow_model import evaluate_orderflow_signal, model_status as orderflow_model_status
 
 
 DEMO_TEST_CONFIRMATION = "DEMO_MARKET_TEST"
+INTRADAY_STRATEGIES = {
+    "intraday_pullback",
+    "intraday_mean_reversion",
+    "intraday_breakout",
+    "intraday_regime_pullback",
+    "intraday_liquidity_sweep",
+}
+ROOT = Path(__file__).resolve().parent
 
 
 @dataclasses.dataclass(frozen=True)
@@ -39,6 +57,10 @@ class Candle:
     close: float
     volume: float
     close_time: int
+    quote_volume: float = 0.0
+    trade_count: int = 0
+    taker_buy_volume: float = 0.0
+    taker_buy_quote_volume: float = 0.0
 
     @property
     def open_dt(self) -> str:
@@ -52,16 +74,41 @@ class BotContext:
     trades_path: Path
     timezone: ZoneInfo
     mode: str
-    broker: BinanceFuturesBroker | None
+    broker: BrokerAdapter | None
     orders_enabled: bool
     exchange_snapshot: dict[str, Any]
     lock: threading.Lock
     stop_event: threading.Event
 
 
+def broker_provider(ctx: BotContext) -> str:
+    if ctx.broker is None:
+        return "paper"
+    return str(ctx.config.get("broker", {}).get("provider", "binance")).lower()
+
+
+def broker_name(ctx: BotContext) -> str:
+    return "MT5" if broker_provider(ctx) == "mt5" else "Binance"
+
+
+def merge_config(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    result = dict(base)
+    for key, value in override.items():
+        if key == "extends":
+            continue
+        if isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = merge_config(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
 def load_config(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         config = json.load(f)
+    if config.get("extends"):
+        parent = load_config(path.parent / str(config["extends"]))
+        config = merge_config(parent, config)
     env_port = os.environ.get("PORT")
     if env_port:
         config.setdefault("app", {})["port"] = int(env_port)
@@ -94,9 +141,12 @@ def ensure_state(ctx: BotContext) -> dict[str, Any]:
         "initial_balance": balance,
         "realized_pnl": 0.0,
         "positions": {},
+        "pending_entries": {},
         "exchange_positions": {},
         "broker_status": {
             "mode": ctx.mode,
+            "provider": broker_provider(ctx),
+            "name": broker_name(ctx) if ctx.broker is not None else "Paper",
             "connected": ctx.mode == "paper",
             "orders_enabled": ctx.orders_enabled,
         },
@@ -105,6 +155,11 @@ def ensure_state(ctx: BotContext) -> dict[str, Any]:
         "seen_signal_candles": {},
         "latest": {},
         "logs": [],
+        "runtime": {
+            "scan_sequence": 0,
+            "scan_in_progress": False,
+            "consecutive_failures": 0,
+        },
     }
     write_state(ctx, state)
     return state
@@ -116,6 +171,35 @@ def write_state(ctx: BotContext, state: dict[str, Any]) -> None:
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(state, f, indent=2, sort_keys=True)
     tmp.replace(ctx.state_path)
+
+
+def normalize_broker_position(position: dict[str, Any]) -> dict[str, Any]:
+    """Convert Binance or MT5 payloads to the runtime position contract."""
+    if "positionAmt" in position:
+        amount = float(position.get("positionAmt", 0.0))
+        return {
+            "symbol": str(position.get("symbol", "")),
+            "side": "long" if amount > 0 else "short",
+            "quantity": abs(amount),
+            "entry": float(position.get("entryPrice", 0.0)),
+            "stop": float(position.get("stop", 0.0)),
+            "target": float(position.get("target", 0.0)),
+            "unrealized_pnl": float(position.get("unRealizedProfit", 0.0)),
+            "raw": position,
+        }
+    normalized = dict(position)
+    normalized.update(
+        {
+            "symbol": str(position.get("symbol", "")),
+            "side": str(position.get("side", "")),
+            "quantity": abs(float(position.get("quantity", 0.0))),
+            "entry": float(position.get("entry", 0.0)),
+            "stop": float(position.get("stop", 0.0)),
+            "target": float(position.get("target", 0.0)),
+            "unrealized_pnl": float(position.get("unrealized_pnl", 0.0)),
+        }
+    )
+    return normalized
 
 
 def ensure_trades_file(ctx: BotContext) -> None:
@@ -208,7 +292,7 @@ def notify_safely(ctx: BotContext, state: dict[str, Any], text: str) -> None:
 
 
 def fetch_klines(base_url: str, symbol: str, interval: str, limit: int) -> list[Candle]:
-    path = "/fapi/v1/klines" if "fapi.binance.com" in base_url else "/api/v3/klines"
+    path = "/fapi/v1/klines"
     rows = request_json(
         f"{base_url.rstrip('/')}{path}",
         {"symbol": symbol, "interval": interval, "limit": limit},
@@ -224,10 +308,42 @@ def fetch_klines(base_url: str, symbol: str, interval: str, limit: int) -> list[
             close=float(row[4]),
             volume=float(row[5]),
             close_time=int(row[6]),
+            quote_volume=float(row[7]) if len(row) > 7 else 0.0,
+            trade_count=int(row[8]) if len(row) > 8 else 0,
+            taker_buy_volume=float(row[9]) if len(row) > 9 else 0.0,
+            taker_buy_quote_volume=float(row[10]) if len(row) > 10 else 0.0,
         )
         if candle.close_time <= now_ms:
             candles.append(candle)
     return candles
+
+
+def fetch_market_candles(ctx: BotContext, symbol: str) -> list[Candle]:
+    market = ctx.config["market"]
+    interval = str(market["interval"])
+    limit = int(market["history_limit"])
+    if broker_provider(ctx) != "mt5":
+        return fetch_klines(str(market["base_url"]), symbol, interval, limit)
+    if ctx.broker is None:
+        raise RuntimeError("MT5 market data requires an initialized MT5 broker.")
+
+    rows = ctx.broker.fetch_candles(symbol, interval, limit)
+    return [
+        Candle(
+            open_time=int(row["open_time"]),
+            open=float(row["open"]),
+            high=float(row["high"]),
+            low=float(row["low"]),
+            close=float(row["close"]),
+            volume=float(row.get("volume", 0.0)),
+            close_time=int(row["close_time"]),
+            quote_volume=float(row.get("quote_volume", 0.0)),
+            trade_count=int(row.get("trade_count", 0)),
+            taker_buy_volume=float(row.get("taker_buy_volume", 0.0)),
+            taker_buy_quote_volume=float(row.get("taker_buy_quote_volume", 0.0)),
+        )
+        for row in rows
+    ]
 
 
 def sma(values: list[float], length: int) -> list[float | None]:
@@ -403,9 +519,9 @@ def can_trade(state: dict[str, Any], ctx: BotContext) -> tuple[bool, str]:
     account = ctx.config["account"]
     if ctx.mode != "paper":
         if not ctx.orders_enabled:
-            return False, "Binance orders disabled"
+            return False, f"{broker_name(ctx)} orders disabled"
         if not state.get("broker_status", {}).get("connected"):
-            return False, "Binance disconnected"
+            return False, f"{broker_name(ctx)} disconnected"
 
     daily = daily_stats(state, ctx)
     if ctx.mode != "paper" and float(state.get("balance", 0.0)) <= 0:
@@ -418,7 +534,8 @@ def can_trade(state: dict[str, Any], ctx: BotContext) -> tuple[bool, str]:
     if float(daily.get("realized_pnl", 0.0)) <= -max_loss:
         return False, "daily loss limit reached"
 
-    if len(state.get("positions", {})) >= int(account["max_open_positions"]):
+    reserved_slots = len(state.get("positions", {})) + len(state.get("pending_entries", {}))
+    if reserved_slots >= int(account["max_open_positions"]):
         return False, "max open positions reached"
 
     return True, "ok"
@@ -432,6 +549,11 @@ def calc_qty(balance: float, entry: float, stop: float, risk_percent: float) -> 
     return risk_cash / risk_per_unit
 
 
+def side_risk_percent(account: dict[str, Any], side: str) -> float:
+    key = "long_risk_per_trade_percent" if side == "long" else "short_risk_per_trade_percent"
+    return float(account.get(key, account["risk_per_trade_percent"]))
+
+
 def close_position(
     ctx: BotContext,
     state: dict[str, Any],
@@ -443,8 +565,21 @@ def close_position(
     if not position:
         return
 
-    pnl = position_unrealized(position, price)
-    state["balance"] = float(state["balance"]) + pnl
+    broker_config = ctx.config.get("broker", {})
+    maker_fee_rate = float(broker_config.get("paper_maker_fee_bps", 0.0)) / 10_000.0
+    taker_fee_rate = float(broker_config.get("paper_taker_fee_bps", 0.0)) / 10_000.0
+    slippage = float(broker_config.get("paper_slippage_bps", 0.0)) / 10_000.0
+    target_fill = str(position.get("target_order_type", "market")) == "limit" and "target" in reason
+    exit_side = "sell" if position["side"] == "long" else "buy"
+    exit_price = float(price)
+    if not target_fill:
+        exit_price *= 1 - slippage if exit_side == "sell" else 1 + slippage
+    gross_pnl = position_unrealized(position, exit_price)
+    exit_fee_rate = maker_fee_rate if target_fill else taker_fee_rate
+    exit_fee = exit_price * float(position["qty"]) * exit_fee_rate
+    entry_fee = float(position.get("entry_fee", 0.0))
+    pnl = gross_pnl - entry_fee - exit_fee
+    state["balance"] = float(state["balance"]) + gross_pnl - exit_fee
     state["realized_pnl"] = float(state.get("realized_pnl", 0.0)) + pnl
     daily = daily_stats(state, ctx)
     daily["realized_pnl"] = float(daily.get("realized_pnl", 0.0)) + pnl
@@ -455,7 +590,7 @@ def close_position(
         "symbol": symbol,
         "side": position["side"],
         "qty": round(float(position["qty"]), 8),
-        "price": round(price, 8),
+        "price": round(exit_price, 8),
         "stop": round(float(position["stop"]), 8),
         "target": round(float(position["target"]), 8),
         "pnl": round(pnl, 2),
@@ -463,7 +598,11 @@ def close_position(
         "reason": reason,
     }
     append_trade(ctx, state, row)
-    log_event(state, f"{symbol}: closed {position['side']} at {price:.6g}, pnl={pnl:.2f} ({reason})", ctx.timezone)
+    log_event(
+        state,
+        f"{symbol}: closed {position['side']} at {exit_price:.6g}, pnl={pnl:.2f} ({reason})",
+        ctx.timezone,
+    )
     notify_safely(
         ctx,
         state,
@@ -480,39 +619,56 @@ def open_position(
     candle: Candle,
     atr_value: float,
     reason: str,
+    entry_override: float | None = None,
+    broker_result_override: dict[str, Any] | None = None,
+    trade_profile: dict[str, Any] | None = None,
 ) -> None:
     account = ctx.config["account"]
     strategy = ctx.config["strategy"]
-    entry = candle.close
+    profile = {**strategy, **(trade_profile or {})}
+    risk_percent = side_risk_percent(account, side)
+    entry = candle.close if entry_override is None else float(entry_override)
 
     if side == "long":
-        stop = entry - atr_value * float(strategy["stop_atr"])
-        target = entry + atr_value * float(strategy["target_atr"])
+        stop = entry - atr_value * float(profile["stop_atr"])
+        target = entry + atr_value * float(profile["target_atr"])
     else:
-        stop = entry + atr_value * float(strategy["stop_atr"])
-        target = entry - atr_value * float(strategy["target_atr"])
+        stop = entry + atr_value * float(profile["stop_atr"])
+        target = entry - atr_value * float(profile["target_atr"])
 
-    broker_result: dict[str, Any] | None = None
-    if ctx.broker is not None:
+    broker_result = broker_result_override
+    if broker_result is None and ctx.broker is not None:
         broker_result = ctx.broker.open_position(
             symbol=symbol,
             side=side,
             stop_distance=abs(entry - stop),
             target_distance=abs(target - entry),
-            risk_percent=float(account["risk_per_trade_percent"]),
+            risk_percent=risk_percent,
             max_open_positions=int(account["max_open_positions"]),
         )
+    if broker_result is not None:
         entry = float(broker_result["entry"])
         stop = float(broker_result["stop"])
         target = float(broker_result["target"])
         qty = float(broker_result["quantity"])
         state["balance"] = float(broker_result["wallet_balance"])
     else:
-        qty = calc_qty(float(state["balance"]), entry, stop, float(account["risk_per_trade_percent"]))
+        qty = calc_qty(float(state["balance"]), entry, stop, risk_percent)
         if qty <= 0 or not math.isfinite(qty):
             log_event(state, f"{symbol}: blocked, invalid position size", ctx.timezone)
             return
+        broker_config = ctx.config.get("broker", {})
+        entry_is_maker = str(profile.get("entry_order_type", "market")) == "limit_retrace"
+        entry_fee_bps = float(
+            broker_config.get(
+                "paper_maker_fee_bps" if entry_is_maker else "paper_taker_fee_bps",
+                0.0,
+            )
+        )
+        entry_fee = entry * qty * entry_fee_bps / 10_000.0
+        state["balance"] = float(state["balance"]) - entry_fee
 
+    market_interval = str(ctx.config.get("market", {}).get("interval", "15m"))
     position = {
         "symbol": symbol,
         "side": side,
@@ -522,11 +678,24 @@ def open_position(
         "initial_stop": stop,
         "target": target,
         "opened_at": now_iso(ctx.timezone),
-        "opened_candle_time": candle.open_time,
+        "opened_candle_time": (
+            int(broker_result.get("opened_at_ms"))
+            // interval_milliseconds(market_interval)
+            * interval_milliseconds(market_interval)
+            if broker_result and broker_result.get("opened_at_ms")
+            else candle.open_time
+        ),
         "reason": reason,
         "highest": candle.high,
         "lowest": candle.low,
         "mode": ctx.mode,
+        "entry_fee": entry_fee if broker_result is None else 0.0,
+        "risk_percent": risk_percent,
+        "source": str(profile.get("source", "baseline")),
+        "target_order_type": str(profile.get("target_order_type", "market")),
+        "max_holding_bars": int(profile.get("max_holding_bars", 0)),
+        "trail_after_r": float(profile.get("trail_after_r", 99.0)),
+        "trail_atr": float(profile.get("trail_atr", 1.5)),
     }
     if broker_result:
         position.update(
@@ -534,12 +703,16 @@ def open_position(
                 "entry_order_id": broker_result.get("entry_order_id"),
                 "stop_algo_id": broker_result.get("stop_algo_id"),
                 "target_algo_id": broker_result.get("target_algo_id"),
+                "target_order_id": broker_result.get("target_order_id"),
+                "target_order_type": broker_result.get("target_order_type", "market"),
                 "opened_at_ms": broker_result.get("opened_at_ms"),
             }
         )
     state.setdefault("positions", {})[symbol] = position
     daily = daily_stats(state, ctx)
     daily["trades"] = int(daily.get("trades", 0)) + 1
+    if position["source"] == "orderflow_ml":
+        daily["orderflow_ml_trades"] = int(daily.get("orderflow_ml_trades", 0)) + 1
 
     row = {
         "time": now_iso(ctx.timezone),
@@ -553,9 +726,10 @@ def open_position(
         "pnl": 0,
         "balance": round(float(state["balance"]), 2),
         "reason": reason,
+        "source": position["source"],
     }
     append_trade(ctx, state, row)
-    destination = "Binance" if ctx.broker else "paper"
+    destination = broker_name(ctx) if ctx.broker else "paper"
     log_event(
         state,
         f"{symbol}: opened {side} on {destination} at {entry:.6g}, "
@@ -571,10 +745,156 @@ def open_position(
     )
 
 
+def interval_milliseconds(interval: str) -> int:
+    units = {"m": 60_000, "h": 3_600_000, "d": 86_400_000}
+    unit = interval[-1]
+    if unit not in units:
+        raise ValueError(f"Unsupported interval: {interval}")
+    return int(interval[:-1]) * units[unit]
+
+
+def market_data_is_fresh(
+    candle: Candle,
+    interval: str,
+    max_age_intervals: float,
+    now_ms: int | None = None,
+) -> bool:
+    if max_age_intervals <= 0:
+        return True
+    current_ms = int(time.time() * 1000) if now_ms is None else int(now_ms)
+    max_age_ms = interval_milliseconds(interval) * float(max_age_intervals)
+    return current_ms - int(candle.close_time) <= max_age_ms
+
+
+def place_pending_entry(
+    ctx: BotContext,
+    state: dict[str, Any],
+    symbol: str,
+    side: str,
+    candle: Candle,
+    atr_value: float,
+    reason: str,
+    trade_profile: dict[str, Any] | None = None,
+) -> None:
+    strategy = ctx.config["strategy"]
+    profile = {**strategy, **(trade_profile or {})}
+    account = ctx.config["account"]
+    offset = atr_value * float(profile.get("entry_offset_atr", 0.0))
+    limit_price = candle.close - offset if side == "long" else candle.close + offset
+    stop_distance = atr_value * float(profile["stop_atr"])
+    target_distance = atr_value * float(profile["target_atr"])
+    expiry_bars = max(1, int(profile.get("entry_expiry_bars", 1)))
+    expiry_open_time = candle.open_time + interval_milliseconds(str(ctx.config["market"]["interval"])) * expiry_bars
+    broker_result: dict[str, Any] | None = None
+    if ctx.broker is not None:
+        broker_result = ctx.broker.place_limit_entry(
+            symbol=symbol,
+            side=side,
+            limit_price=limit_price,
+            stop_distance=stop_distance,
+            target_distance=target_distance,
+            risk_percent=side_risk_percent(account, side),
+            max_open_positions=int(account["max_open_positions"]),
+        )
+        limit_price = float(broker_result["limit_price"])
+        state["balance"] = float(broker_result["wallet_balance"])
+    state.setdefault("pending_entries", {})[symbol] = {
+        "symbol": symbol,
+        "side": side,
+        "limit_price": limit_price,
+        "stop_distance": stop_distance,
+        "target_distance": target_distance,
+        "signal_candle_time": candle.open_time,
+        "expiry_open_time": expiry_open_time,
+        "atr": atr_value,
+        "reason": reason,
+        "trade_profile": trade_profile or {},
+        "entry_order_id": broker_result.get("entry_order_id") if broker_result else None,
+        "entry_client_order_id": broker_result.get("entry_client_order_id") if broker_result else None,
+        "placed_at": now_iso(ctx.timezone),
+    }
+    destination = broker_name(ctx) if ctx.broker else "paper"
+    log_event(state, f"{symbol}: placed {side} limit on {destination} at {limit_price:.6g}", ctx.timezone)
+    write_state(ctx, state)
+
+
+def reconcile_pending_entry(
+    ctx: BotContext,
+    state: dict[str, Any],
+    symbol: str,
+    candles: list[Candle],
+) -> str | None:
+    pending = state.setdefault("pending_entries", {}).get(symbol)
+    if not pending:
+        return None
+    latest = candles[-1]
+    filled_candle = latest
+    broker_result: dict[str, Any] | None = None
+
+    if ctx.broker is not None:
+        client_order_id = str(pending["entry_client_order_id"])
+        order = ctx.broker.get_entry_order(symbol, client_order_id)
+        status = str(order.get("status", "UNKNOWN")).upper()
+        if status != "FILLED" and latest.open_time >= int(pending["expiry_open_time"]):
+            order = ctx.broker.cancel_entry_order(symbol, client_order_id)
+            status = str(order.get("status", "UNKNOWN")).upper()
+            if status != "FILLED":
+                state["pending_entries"].pop(symbol, None)
+                log_event(state, f"{symbol}: limit entry expired ({status})", ctx.timezone)
+                return "limit entry expired"
+        if status != "FILLED":
+            if status in {"CANCELED", "EXPIRED", "REJECTED"}:
+                state["pending_entries"].pop(symbol, None)
+                return f"limit entry {status.lower()}"
+            return f"limit pending at {float(pending['limit_price']):.6g}"
+        broker_result = ctx.broker.activate_limit_entry(
+            symbol=symbol,
+            side=str(pending["side"]),
+            client_order_id=client_order_id,
+            stop_distance=float(pending["stop_distance"]),
+            target_distance=float(pending["target_distance"]),
+        )
+    else:
+        eligible = [
+            item
+            for item in candles
+            if int(pending["signal_candle_time"]) < item.open_time <= int(pending["expiry_open_time"])
+        ]
+        limit_price = float(pending["limit_price"])
+        for item in eligible:
+            touched = item.low <= limit_price if pending["side"] == "long" else item.high >= limit_price
+            if touched:
+                filled_candle = item
+                break
+        else:
+            if latest.open_time >= int(pending["expiry_open_time"]):
+                state["pending_entries"].pop(symbol, None)
+                log_event(state, f"{symbol}: paper limit entry expired", ctx.timezone)
+                return "limit entry expired"
+            return f"limit pending at {limit_price:.6g}"
+
+    state["pending_entries"].pop(symbol, None)
+    open_position(
+        ctx,
+        state,
+        symbol,
+        str(pending["side"]),
+        filled_candle,
+        float(pending["atr"]),
+        str(pending["reason"]),
+        entry_override=float(pending["limit_price"]),
+        broker_result_override=broker_result,
+        trade_profile=dict(pending.get("trade_profile", {})),
+    )
+    return f"limit filled {pending['side']}"
+
+
 def refresh_exchange_account(ctx: BotContext, state: dict[str, Any]) -> None:
     if ctx.broker is None:
         state["broker_status"] = {
             "mode": "paper",
+            "provider": "paper",
+            "name": "Paper",
             "connected": True,
             "orders_enabled": True,
             "message": "Paper simulator",
@@ -583,9 +903,10 @@ def refresh_exchange_account(ctx: BotContext, state: dict[str, Any]) -> None:
 
     try:
         summary = ctx.broker.account_summary()
+        normalized = [normalize_broker_position(item) for item in summary["positions"]]
         positions = {
             str(item["symbol"]): item
-            for item in summary["positions"]
+            for item in normalized
             if str(item.get("symbol", "")).upper()
         }
         ctx.exchange_snapshot = positions
@@ -600,6 +921,8 @@ def refresh_exchange_account(ctx: BotContext, state: dict[str, Any]) -> None:
         state["exchange_positions"] = positions
         state["broker_status"] = {
             "mode": ctx.mode,
+            "provider": broker_provider(ctx),
+            "name": broker_name(ctx),
             "connected": True,
             "orders_enabled": ctx.orders_enabled,
             "environment": summary["environment"],
@@ -612,12 +935,14 @@ def refresh_exchange_account(ctx: BotContext, state: dict[str, Any]) -> None:
         message = str(exc)
         state["broker_status"] = {
             "mode": ctx.mode,
+            "provider": broker_provider(ctx),
+            "name": broker_name(ctx),
             "connected": False,
             "orders_enabled": ctx.orders_enabled,
             "message": message,
         }
         if state.get("last_broker_error") != message:
-            log_event(state, f"Binance connection error: {message}", ctx.timezone)
+            log_event(state, f"{broker_name(ctx)} connection error: {message}", ctx.timezone)
             state["last_broker_error"] = message
         ctx.exchange_snapshot = {}
 
@@ -653,13 +978,13 @@ def record_exchange_close(
         "pnl": round(pnl, 2),
         "balance": round(float(state["balance"]), 2),
         "reason": (
-            f"Binance position closed; realized={pnl_info['realized_pnl']:.2f}, "
+            f"{broker_name(ctx)} position closed; realized={pnl_info['realized_pnl']:.2f}, "
             f"commission={pnl_info['commission']:.2f}"
         ),
     }
     append_trade(ctx, state, row)
     ctx.broker.cancel_protection(symbol)
-    log_event(state, f"{symbol}: Binance position closed, net pnl={pnl:.2f}", ctx.timezone)
+    log_event(state, f"{symbol}: {broker_name(ctx)} position closed, net pnl={pnl:.2f}", ctx.timezone)
     notify_safely(
         ctx,
         state,
@@ -681,29 +1006,45 @@ def sync_exchange_position(
         return
     exchange_position = ctx.exchange_snapshot.get(symbol)
     if exchange_position:
-        amount = float(exchange_position.get("positionAmt", 0))
-        position["entry"] = float(exchange_position.get("entryPrice") or position["entry"])
-        position["qty"] = abs(amount)
-        position["side"] = "long" if amount > 0 else "short"
-        position["exchange_unrealized_pnl"] = float(exchange_position.get("unRealizedProfit", 0))
-        if ctx.orders_enabled and not position.get("emergency_close_sent"):
-            if not ctx.broker.has_stop_and_target(symbol):
-                ctx.broker.cancel_protection(symbol)
-                ctx.broker.market_close(symbol, exchange_position)
-                position["emergency_close_sent"] = True
-                log_event(
-                    state,
-                    f"{symbol}: protection missing; emergency Binance close sent",
-                    ctx.timezone,
-                )
-                notify_safely(
-                    ctx,
-                    state,
-                    f"Crypto Autobot [{ctx.mode.upper()}]\n"
-                    f"Emergency close sent for {symbol}: Stop Loss or Take Profit was missing.",
-                )
+        verify_exchange_protection(ctx, state, symbol, position, exchange_position)
         return
     record_exchange_close(ctx, state, symbol, position, candle.close)
+
+
+def verify_exchange_protection(
+    ctx: BotContext,
+    state: dict[str, Any],
+    symbol: str,
+    position: dict[str, Any],
+    exchange_position: dict[str, Any],
+) -> None:
+    if ctx.broker is None:
+        return
+    position["entry"] = float(exchange_position.get("entry") or position["entry"])
+    position["qty"] = abs(float(exchange_position.get("quantity", 0.0)))
+    position["side"] = str(exchange_position.get("side") or position["side"])
+    position["exchange_unrealized_pnl"] = float(exchange_position.get("unrealized_pnl", 0))
+    if (
+        not ctx.orders_enabled
+        or position.get("emergency_close_sent")
+        or position.get("time_exit_sent")
+        or ctx.broker.has_stop_and_target(symbol)
+    ):
+        return
+    ctx.broker.cancel_protection(symbol)
+    ctx.broker.market_close(symbol, exchange_position)
+    position["emergency_close_sent"] = True
+    log_event(
+        state,
+        f"{symbol}: protection missing; emergency {broker_name(ctx)} close sent",
+        ctx.timezone,
+    )
+    notify_safely(
+        ctx,
+        state,
+        f"Crypto Autobot [{ctx.mode.upper()}]\n"
+        f"Emergency close sent for {symbol}: Stop Loss or Take Profit was missing.",
+    )
 
 
 def manage_position(ctx: BotContext, state: dict[str, Any], symbol: str, candle: Candle, atr_value: float | None) -> None:
@@ -712,6 +1053,33 @@ def manage_position(ctx: BotContext, state: dict[str, Any], symbol: str, candle:
         return
     if ctx.broker is not None:
         sync_exchange_position(ctx, state, symbol, candle)
+        position = state.get("positions", {}).get(symbol)
+        if not position:
+            return
+        max_holding = int(position.get("max_holding_bars", ctx.config["strategy"].get("max_holding_bars", 0)))
+        interval_ms = interval_milliseconds(str(ctx.config["market"]["interval"]))
+        bars_held = max(
+            0,
+            (candle.open_time - int(position.get("opened_candle_time", candle.open_time)))
+            // interval_ms,
+        )
+        if (
+            max_holding
+            and bars_held >= max_holding
+            and ctx.orders_enabled
+            and not position.get("time_exit_sent")
+            and not position.get("emergency_close_sent")
+        ):
+            exchange_position = ctx.exchange_snapshot.get(symbol)
+            if exchange_position:
+                ctx.broker.cancel_protection(symbol)
+                ctx.broker.market_close(symbol, exchange_position)
+                position["time_exit_sent"] = True
+                log_event(
+                    state,
+                    f"{symbol}: {max_holding}-bar time exit sent to {broker_name(ctx)}",
+                    ctx.timezone,
+                )
         return
 
     side = position["side"]
@@ -724,14 +1092,14 @@ def manage_position(ctx: BotContext, state: dict[str, Any], symbol: str, candle:
         if side == "long":
             position["highest"] = max(float(position.get("highest", candle.high)), candle.high)
             risk = entry - float(position["initial_stop"])
-            if risk > 0 and candle.high >= entry + risk * float(ctx.config["strategy"]["trail_after_r"]):
-                position["stop"] = max(stop, candle.close - atr_value * float(ctx.config["strategy"]["trail_atr"]))
+            if risk > 0 and candle.high >= entry + risk * float(position.get("trail_after_r", ctx.config["strategy"]["trail_after_r"])):
+                position["stop"] = max(stop, candle.close - atr_value * float(position.get("trail_atr", ctx.config["strategy"]["trail_atr"])))
                 stop = float(position["stop"])
         else:
             position["lowest"] = min(float(position.get("lowest", candle.low)), candle.low)
             risk = float(position["initial_stop"]) - entry
-            if risk > 0 and candle.low <= entry - risk * float(ctx.config["strategy"]["trail_after_r"]):
-                position["stop"] = min(stop, candle.close + atr_value * float(ctx.config["strategy"]["trail_atr"]))
+            if risk > 0 and candle.low <= entry - risk * float(position.get("trail_after_r", ctx.config["strategy"]["trail_after_r"])):
+                position["stop"] = min(stop, candle.close + atr_value * float(position.get("trail_atr", ctx.config["strategy"]["trail_atr"])))
                 stop = float(position["stop"])
 
     if side == "long":
@@ -750,43 +1118,78 @@ def manage_position(ctx: BotContext, state: dict[str, Any], symbol: str, candle:
         close_position(ctx, state, symbol, stop, "stop")
     elif hit_target:
         close_position(ctx, state, symbol, target, "target")
+    else:
+        max_holding = int(position.get("max_holding_bars", ctx.config["strategy"].get("max_holding_bars", 0)))
+        interval_ms = interval_milliseconds(str(ctx.config["market"]["interval"]))
+        bars_held = max(
+            0,
+            (candle.open_time - int(position.get("opened_candle_time", candle.open_time)))
+            // interval_ms,
+        )
+        if max_holding and bars_held >= max_holding:
+            close_position(ctx, state, symbol, candle.close, "time_exit")
 
 
-def scan_symbol(ctx: BotContext, state: dict[str, Any], symbol: str) -> dict[str, Any]:
+def scan_symbol(
+    ctx: BotContext,
+    state: dict[str, Any],
+    symbol: str,
+    btc_candles: list[Candle] | None = None,
+) -> dict[str, Any]:
     market = ctx.config["market"]
     strategy = ctx.config["strategy"]
-    candles = fetch_klines(
-        str(market["base_url"]),
-        symbol,
-        str(market["interval"]),
-        int(market["history_limit"]),
-    )
-    min_needed = max(
-        int(strategy["slow_ema"]) + int(strategy.get("slow_slope_lookback", 1)),
-        int(strategy["breakout_lookback"]) + 2,
-        int(strategy["volume_sma_length"]),
-        int(strategy["atr_length"]),
-    )
+    candles = fetch_market_candles(ctx, symbol)
+    strategy_type = str(strategy.get("type", "legacy_breakout"))
+    if strategy_type in INTRADAY_STRATEGIES:
+        min_needed = intraday_minimum_history(strategy)
+    else:
+        min_needed = max(
+            int(strategy["slow_ema"]) + int(strategy.get("slow_slope_lookback", 1)),
+            int(strategy["breakout_lookback"]) + 2,
+            int(strategy["volume_sma_length"]),
+            int(strategy["atr_length"]),
+        )
     if len(candles) < min_needed:
         return {"symbol": symbol, "status": "not enough candles", "candles": len(candles)}
+    interval = str(market["interval"])
+    max_age_intervals = float(market.get("max_candle_age_intervals", 2.0))
+    if not market_data_is_fresh(candles[-1], interval, max_age_intervals):
+        return {
+            "symbol": symbol,
+            "time": candles[-1].open_dt,
+            "price": candles[-1].close,
+            "data_source": broker_name(ctx) if broker_provider(ctx) == "mt5" else "Binance",
+            "status": "stale market data; trading blocked",
+        }
 
-    closes = [c.close for c in candles]
-    volumes = [c.volume for c in candles]
-    fast = ema(closes, int(strategy["fast_ema"]))
-    slow = ema(closes, int(strategy["slow_ema"]))
-    atrs = atr(candles, int(strategy["atr_length"]))
-    vol_sma = sma(volumes, int(strategy["volume_sma_length"]))
-    adxs = adx(candles, int(strategy.get("adx_length", 14)))
+    intraday_indicators = None
+    if strategy_type in INTRADAY_STRATEGIES:
+        intraday_indicators = build_intraday_indicators(candles, strategy)
+        atrs = intraday_indicators.atr
+        fast = intraday_indicators.entry_fast
+        slow = intraday_indicators.regime_slow
+        vol_sma: list[float | None] = []
+        adxs: list[float | None] = []
+    else:
+        closes = [c.close for c in candles]
+        volumes = [c.volume for c in candles]
+        fast = ema(closes, int(strategy["fast_ema"]))
+        slow = ema(closes, int(strategy["slow_ema"]))
+        atrs = atr(candles, int(strategy["atr_length"]))
+        vol_sma = sma(volumes, int(strategy["volume_sma_length"]))
+        adxs = adx(candles, int(strategy.get("adx_length", 14)))
 
     candle = candles[-1]
     i = len(candles) - 1
     atr_value = atrs[i]
+    pending_status = reconcile_pending_entry(ctx, state, symbol, candles)
     manage_position(ctx, state, symbol, candle, atr_value)
 
     latest = {
         "symbol": symbol,
         "time": candle.open_dt,
         "price": candle.close,
+        "data_source": broker_name(ctx) if broker_provider(ctx) == "mt5" else "Binance",
         "fast_ema": fast[i],
         "slow_ema": slow[i],
         "atr": atr_value,
@@ -800,20 +1203,78 @@ def scan_symbol(ctx: BotContext, state: dict[str, Any], symbol: str) -> dict[str
     if symbol in state.get("positions", {}):
         latest["status"] = "position open"
         return latest
+    if symbol in state.get("pending_entries", {}):
+        latest["status"] = pending_status or "limit pending"
+        return latest
     if symbol in state.get("exchange_positions", {}):
-        latest["status"] = "external Binance position; bot will not modify it"
+        latest["status"] = f"external {broker_name(ctx)} position; bot will not modify it"
         return latest
 
-    side, reason, signal_status = evaluate_market_signal(
-        candles,
-        i,
-        strategy,
-        fast,
-        slow,
-        atrs,
-        vol_sma,
-        adxs,
-    )
+    baseline_symbols = {
+        str(item).upper()
+        for item in ctx.config.get("ensemble", {}).get("baseline_symbols", market["symbols"])
+    }
+    side = None
+    reason = ""
+    signal_status = "outside baseline universe"
+    trade_profile: dict[str, Any] | None = None
+    signal_source = "baseline"
+    if symbol in baseline_symbols:
+        if strategy_type in INTRADAY_STRATEGIES:
+            decision = evaluate_strategy_signal(candles, i, strategy, intraday_indicators)
+            side, reason, signal_status = decision.side, decision.reason, decision.status
+        else:
+            side, reason, signal_status = evaluate_market_signal(
+                candles,
+                i,
+                strategy,
+                fast,
+                slow,
+                atrs,
+                vol_sma,
+                adxs,
+            )
+    ensemble = ctx.config.get("ensemble", {})
+    baseline_status = signal_status
+    if not side and ensemble.get("enabled", False):
+        reference = btc_candles or (candles if symbol == "BTCUSDT" else [])
+        ml_decision = evaluate_orderflow_signal(ensemble, ROOT, symbol, candles, reference)
+        signal_status = (
+            f"{baseline_status}; ML: {ml_decision.status}"
+            if symbol in baseline_symbols
+            else ml_decision.status
+        )
+        if ml_decision.side:
+            side = ml_decision.side
+            atr_value = ml_decision.atr
+            reason = f"orderflow_ml score={ml_decision.score:.5f} threshold={ml_decision.threshold:.5f}"
+            signal_source = "orderflow_ml"
+            trade_profile = {
+                "source": signal_source,
+                "entry_order_type": "market",
+                "target_order_type": str(ensemble.get("target_order_type", "limit")),
+                "stop_atr": float(ensemble.get("stop_atr", 1.5)),
+                "target_atr": float(ensemble.get("target_atr", 3.0)),
+                "max_holding_bars": int(ensemble.get("max_holding_bars", 16)),
+                "trail_after_r": float(ensemble.get("trail_after_r", 99.0)),
+                "trail_atr": float(ensemble.get("trail_atr", 1.5)),
+            }
+    if signal_source == "orderflow_ml":
+        ml_open = sum(
+            position.get("source") == "orderflow_ml"
+            for position in state.get("positions", {}).values()
+        ) + sum(
+            pending.get("trade_profile", {}).get("source") == "orderflow_ml"
+            for pending in state.get("pending_entries", {}).values()
+        )
+        if ml_open >= int(ensemble.get("max_open_positions", 3)):
+            latest["status"] = "ML position limit reached"
+            return latest
+        if int(daily_stats(state, ctx).get("orderflow_ml_trades", 0)) >= int(
+            ensemble.get("max_daily_trades", 6)
+        ):
+            latest["status"] = "ML daily trade limit reached"
+            return latest
     if not side:
         latest["status"] = signal_status
         return latest
@@ -831,9 +1292,15 @@ def scan_symbol(ctx: BotContext, state: dict[str, Any], symbol: str) -> dict[str
     if atr_value is None:
         latest["status"] = "ATR unavailable"
         return latest
-    open_position(ctx, state, symbol, side, candle, atr_value, reason)
+    entry_order_type = str((trade_profile or strategy).get("entry_order_type", "market"))
+    if entry_order_type == "limit_retrace":
+        place_pending_entry(ctx, state, symbol, side, candle, atr_value, reason, trade_profile)
+        latest["status"] = f"placed {side} limit"
+    else:
+        open_position(ctx, state, symbol, side, candle, atr_value, reason, trade_profile=trade_profile)
+        latest["status"] = f"opened {side}"
+    latest["signal_source"] = signal_source
     state["seen_signal_candles"][symbol] = seen_key
-    latest["status"] = f"opened {side}"
 
     return latest
 
@@ -842,17 +1309,42 @@ def scan_once(ctx: BotContext) -> dict[str, Any]:
     with ctx.lock:
         ensure_trades_file(ctx)
         state = ensure_state(ctx)
+        runtime = state.setdefault("runtime", {})
+        started_monotonic = time.monotonic()
+        runtime["scan_sequence"] = int(runtime.get("scan_sequence", 0)) + 1
+        runtime["scan_in_progress"] = True
+        runtime["last_scan_started_at"] = now_iso(ctx.timezone)
+        write_state(ctx, state)
         refresh_exchange_account(ctx, state)
         results: list[dict[str, Any]] = []
+        error_count = 0
+        btc_candles: list[Candle] | None = None
+        ml_runtime_status = orderflow_model_status(ctx.config.get("ensemble", {}), ROOT)
+        runtime["ensemble"] = ml_runtime_status
+        if ml_runtime_status.get("ready", False):
+            market = ctx.config["market"]
+            try:
+                btc_candles = fetch_market_candles(ctx, "BTCUSDT")
+            except Exception as exc:  # noqa: BLE001
+                log_event(state, f"BTCUSDT: ML reference error: {exc}", ctx.timezone)
         for symbol in ctx.config["market"]["symbols"]:
             try:
-                result = scan_symbol(ctx, state, str(symbol).upper())
+                result = scan_symbol(ctx, state, str(symbol).upper(), btc_candles)
                 results.append(result)
                 state.setdefault("latest", {})[str(symbol).upper()] = result
             except Exception as exc:  # noqa: BLE001
+                error_count += 1
                 message = f"{symbol}: scan error: {exc}"
                 results.append({"symbol": symbol, "status": message})
                 log_event(state, message, ctx.timezone)
+        runtime["scan_in_progress"] = False
+        runtime["last_scan_completed_at"] = now_iso(ctx.timezone)
+        runtime["last_scan_duration_seconds"] = round(time.monotonic() - started_monotonic, 3)
+        runtime["last_scan_symbol_errors"] = error_count
+        all_failed = bool(results) and error_count == len(results)
+        runtime["consecutive_failures"] = (
+            int(runtime.get("consecutive_failures", 0)) + 1 if all_failed else 0
+        )
         write_state(ctx, state)
         return {"status": "ok", "results": results, "state": public_state(ctx, state)}
 
@@ -863,7 +1355,7 @@ def open_demo_test_order(
     side: str,
     confirmation: str,
 ) -> dict[str, Any]:
-    if ctx.mode != "demo":
+    if ctx.mode != "demo" or broker_provider(ctx) != "binance":
         raise ValueError("Test order is available only in Binance Demo mode.")
     if confirmation != DEMO_TEST_CONFIRMATION:
         raise ValueError("Demo test order was not confirmed.")
@@ -886,7 +1378,11 @@ def open_demo_test_order(
             raise ValueError("Binance Demo is not connected.")
         if float(state.get("broker_status", {}).get("available_balance", 0.0)) <= 0:
             raise ValueError("Demo balance is zero. Add virtual USDT in Binance Demo first.")
-        if symbol in state.get("positions", {}) or symbol in state.get("exchange_positions", {}):
+        if (
+            symbol in state.get("positions", {})
+            or symbol in state.get("pending_entries", {})
+            or symbol in state.get("exchange_positions", {})
+        ):
             raise ValueError(f"{symbol} already has an open position.")
 
         can_open, blocked_reason = can_trade(state, ctx)
@@ -932,11 +1428,178 @@ def worker_loop(controller: RuntimeController) -> None:
         except Exception as exc:  # noqa: BLE001
             with ctx.lock:
                 state = ensure_state(ctx)
+                runtime = state.setdefault("runtime", {})
+                runtime["scan_in_progress"] = False
+                runtime["last_scan_failed_at"] = now_iso(ctx.timezone)
+                runtime["last_scan_error"] = str(exc)
+                runtime["consecutive_failures"] = int(runtime.get("consecutive_failures", 0)) + 1
                 log_event(state, f"worker error: {exc}", ctx.timezone)
                 write_state(ctx, state)
         interval = int(ctx.config["app"]["scan_interval_seconds"])
         controller.wake_event.wait(interval)
         controller.wake_event.clear()
+
+
+def broker_watchdog_once(ctx: BotContext) -> dict[str, Any]:
+    if ctx.broker is None or not ctx.orders_enabled:
+        return {"status": "disabled", "checked_pending": 0, "checked_positions": 0}
+    with ctx.lock:
+        ensure_trades_file(ctx)
+        state = ensure_state(ctx)
+        runtime = state.setdefault("runtime", {})
+        runtime["watchdog_in_progress"] = True
+        runtime["last_watchdog_started_at"] = now_iso(ctx.timezone)
+        refresh_exchange_account(ctx, state)
+        checked_pending = 0
+        checked_positions = 0
+        errors = 0
+        if state.get("broker_status", {}).get("connected"):
+            interval_ms = interval_milliseconds(str(ctx.config["market"]["interval"]))
+            current_open = int(time.time() * 1000) // interval_ms * interval_ms
+            for symbol in list(state.get("pending_entries", {})):
+                pending = state.get("pending_entries", {}).get(symbol)
+                if not pending:
+                    continue
+                checked_pending += 1
+                price = float(pending["limit_price"])
+                candle = Candle(
+                    open_time=current_open,
+                    open=price,
+                    high=price,
+                    low=price,
+                    close=price,
+                    volume=0.0,
+                    close_time=current_open + interval_ms - 1,
+                )
+                try:
+                    reconcile_pending_entry(ctx, state, symbol, [candle])
+                except Exception as exc:  # noqa: BLE001
+                    errors += 1
+                    message = f"{symbol}: protection watchdog entry error: {exc}"
+                    if state.get("last_watchdog_entry_error", {}).get(symbol) != str(exc):
+                        log_event(state, message, ctx.timezone)
+                        notify_safely(
+                            ctx,
+                            state,
+                            f"Crypto Autobot [{ctx.mode.upper()}]\n"
+                            f"Protection watchdog could not process filled entry {symbol}: {exc}",
+                        )
+                    state.setdefault("last_watchdog_entry_error", {})[symbol] = str(exc)
+            for symbol, position in list(state.get("positions", {}).items()):
+                exchange_position = ctx.exchange_snapshot.get(symbol)
+                if not exchange_position:
+                    continue
+                checked_positions += 1
+                try:
+                    verify_exchange_protection(ctx, state, symbol, position, exchange_position)
+                except Exception as exc:  # noqa: BLE001
+                    errors += 1
+                    message = f"{symbol}: protection watchdog position error: {exc}"
+                    if state.get("last_watchdog_position_error", {}).get(symbol) != str(exc):
+                        log_event(state, message, ctx.timezone)
+                        notify_safely(
+                            ctx,
+                            state,
+                            f"Crypto Autobot [{ctx.mode.upper()}]\n"
+                            f"Protection watchdog failed for open position {symbol}: {exc}",
+                        )
+                    state.setdefault("last_watchdog_position_error", {})[symbol] = str(exc)
+        runtime["watchdog_in_progress"] = False
+        runtime["last_watchdog_completed_at"] = now_iso(ctx.timezone)
+        runtime["last_watchdog_errors"] = errors
+        write_state(ctx, state)
+        return {
+            "status": "ok" if errors == 0 else "degraded",
+            "checked_pending": checked_pending,
+            "checked_positions": checked_positions,
+            "errors": errors,
+        }
+
+
+def protection_watchdog_loop(controller: RuntimeController) -> None:
+    while not controller.stop_event.is_set():
+        ctx = controller.current()
+        try:
+            broker_watchdog_once(ctx)
+        except Exception as exc:  # noqa: BLE001
+            with ctx.lock:
+                state = ensure_state(ctx)
+                runtime = state.setdefault("runtime", {})
+                runtime["watchdog_in_progress"] = False
+                runtime["last_watchdog_failed_at"] = now_iso(ctx.timezone)
+                runtime["last_watchdog_error"] = str(exc)
+                log_event(state, f"protection watchdog error: {exc}", ctx.timezone)
+                write_state(ctx, state)
+        seconds = max(1, int(ctx.config["app"].get("protection_watchdog_seconds", 2)))
+        controller.stop_event.wait(seconds)
+
+
+def broker_readiness_snapshot(ctx: BotContext) -> dict[str, Any]:
+    if ctx.broker is None:
+        return {
+            "status": "ok",
+            "ready": True,
+            "mode": "paper",
+            "message": "No broker credentials required.",
+            "orders_sent": 0,
+        }
+
+    summary = ctx.broker.account_summary()
+    strategy = ctx.config.get("strategy", {})
+    strategy_type = str(strategy.get("type", "legacy_breakout"))
+    if strategy_type in INTRADAY_STRATEGIES:
+        minimum = intraday_minimum_history(strategy)
+    else:
+        minimum = max(
+            int(strategy.get("atr_length", 14)) + 2,
+            int(strategy.get("slow_ema", 0)) + 2,
+        )
+    interval = str(ctx.config["market"]["interval"])
+    max_age = float(ctx.config["market"].get("max_candle_age_intervals", 2.0))
+    symbols: list[dict[str, Any]] = []
+    ready = float(summary.get("available_balance", 0.0)) > 0
+    for configured_symbol in ctx.config["market"]["symbols"]:
+        symbol = str(configured_symbol).upper()
+        item: dict[str, Any] = {"symbol": symbol, "ready": False}
+        try:
+            candles = fetch_market_candles(ctx, symbol)
+            enough_history = len(candles) >= minimum
+            fresh = bool(candles) and market_data_is_fresh(
+                candles[-1], interval, max_age
+            )
+            if broker_provider(ctx) == "binance":
+                rules_getter = getattr(ctx.broker, "symbol_rules", None)
+                if callable(rules_getter):
+                    rules_getter(symbol)
+            item.update(
+                {
+                    "ready": enough_history and fresh,
+                    "closed_candles": len(candles),
+                    "minimum_candles": minimum,
+                    "fresh": fresh,
+                    "last_candle": candles[-1].open_dt if candles else None,
+                    "data_source": broker_name(ctx),
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
+            item["error"] = str(exc)
+        ready = ready and bool(item["ready"])
+        symbols.append(item)
+    return {
+        "status": "ok" if ready else "not_ready",
+        "ready": ready,
+        "mode": ctx.mode,
+        "broker": broker_name(ctx),
+        "environment": summary.get("environment"),
+        "asset": summary.get("asset"),
+        "balance": float(summary.get("balance", 0.0)),
+        "available_balance": float(summary.get("available_balance", 0.0)),
+        "open_positions": len(summary.get("positions", [])),
+        "position_mode": summary.get("position_mode"),
+        "orders_enabled": summary.get("orders_enabled"),
+        "orders_sent": 0,
+        "symbols": symbols,
+    }
 
 
 def stats_from_state(state: dict[str, Any]) -> dict[str, Any]:
@@ -955,11 +1618,30 @@ def stats_from_state(state: dict[str, Any]) -> dict[str, Any]:
         "losses": len(losses),
         "win_rate": round(len(wins) / len(trades) * 100, 2) if trades else 0,
         "open_positions": len(state.get("positions", {})),
+        "pending_entries": len(state.get("pending_entries", {})),
     }
 
 
 def public_state(ctx: BotContext, state: dict[str, Any]) -> dict[str, Any]:
     prices = {symbol: data.get("price") for symbol, data in state.get("latest", {}).items()}
+    active_symbols = set(ctx.config.get("market", {}).get("symbols", []))
+    active_latest = {
+        symbol: data
+        for symbol, data in state.get("latest", {}).items()
+        if symbol in active_symbols
+    }
+    strategy = ctx.config.get("strategy", {})
+    stop_atr = float(strategy.get("stop_atr", 0.0))
+    target_atr = float(strategy.get("target_atr", 0.0))
+    max_holding_bars = int(strategy.get("max_holding_bars", 0))
+    interval = str(ctx.config.get("market", {}).get("interval", "15m"))
+    max_holding_hours = (
+        max_holding_bars * interval_milliseconds(interval) / 3_600_000
+        if max_holding_bars
+        else 0.0
+    )
+    ensemble_config = ctx.config.get("ensemble", {})
+    ensemble_status = orderflow_model_status(ensemble_config, ROOT)
     open_pnl = 0.0
     positions = {}
     for symbol, position in state.get("positions", {}).items():
@@ -977,34 +1659,55 @@ def public_state(ctx: BotContext, state: dict[str, Any]) -> dict[str, Any]:
     for symbol, exchange_position in state.get("exchange_positions", {}).items():
         if symbol in displayed_positions:
             continue
-        amount = float(exchange_position.get("positionAmt", 0))
         displayed_positions[symbol] = {
             "symbol": symbol,
-            "side": "long" if amount > 0 else "short",
-            "entry": float(exchange_position.get("entryPrice", 0)),
-            "qty": abs(amount),
-            "stop": None,
-            "target": None,
-            "unrealized_pnl": round(float(exchange_position.get("unRealizedProfit", 0)), 2),
+            "side": str(exchange_position.get("side", "")),
+            "entry": float(exchange_position.get("entry", 0)),
+            "qty": abs(float(exchange_position.get("quantity", 0))),
+            "stop": float(exchange_position.get("stop", 0)) or None,
+            "target": float(exchange_position.get("target", 0)) or None,
+            "unrealized_pnl": round(float(exchange_position.get("unrealized_pnl", 0)), 2),
             "external": True,
         }
-        open_pnl += float(exchange_position.get("unRealizedProfit", 0))
+        open_pnl += float(exchange_position.get("unrealized_pnl", 0))
 
     stats = stats_from_state(state)
     stats["open_positions"] = len(displayed_positions)
     result = {
         "updated_at": state.get("updated_at"),
         "mode": ctx.mode,
+        "broker_provider": broker_provider(ctx),
+        "broker_name": broker_name(ctx) if ctx.broker is not None else "Paper",
         "orders_enabled": ctx.orders_enabled,
+        "runtime": state.get("runtime", {}),
+        "strategy_profile": {
+            "timeframe": interval,
+            "reward_risk": round(target_atr / stop_atr, 2) if stop_atr else 0.0,
+            "target_order_type": str(strategy.get("target_order_type", "market")),
+            "max_holding_hours": round(max_holding_hours, 2),
+            "risk_per_trade_percent": float(ctx.config.get("account", {}).get("risk_per_trade_percent", 0.0)),
+            "long_risk_per_trade_percent": side_risk_percent(ctx.config.get("account", {}), "long"),
+            "short_risk_per_trade_percent": side_risk_percent(ctx.config.get("account", {}), "short"),
+            "status": "PAPER VALIDATION" if ctx.mode == "paper" else "DEMO CANDIDATE",
+            "ensemble_enabled": bool(ensemble_config.get("enabled", False)),
+            "ensemble_reward_risk": round(
+                float(ensemble_config.get("target_atr", 0.0))
+                / float(ensemble_config.get("stop_atr", 1.0)),
+                2,
+            ) if ensemble_config.get("enabled", False) else None,
+        },
+        "ensemble_status": ensemble_status,
         "market": {
             "symbols": list(ctx.config.get("market", {}).get("symbols", [])),
             "interval": ctx.config.get("market", {}).get("interval"),
         },
         "broker_status": state.get("broker_status", {}),
+        "health": health_snapshot(ctx, state)[0],
         "stats": stats,
         "equity_now": round(float(state.get("balance", 0.0)) + open_pnl, 2),
         "positions": displayed_positions,
-        "latest": state.get("latest", {}),
+        "pending_entries": state.get("pending_entries", {}),
+        "latest": active_latest,
         "trades": list(reversed(state.get("trades", [])[-80:])),
         "logs": list(
             reversed(
@@ -1018,6 +1721,76 @@ def public_state(ctx: BotContext, state: dict[str, Any]) -> dict[str, Any]:
     }
     result["stats"]["open_unrealized_pnl"] = round(open_pnl, 2)
     return result
+
+
+def health_snapshot(
+    ctx: BotContext,
+    state: dict[str, Any],
+    now: dt.datetime | None = None,
+) -> tuple[dict[str, Any], int]:
+    broker_status = state.get("broker_status", {})
+    runtime = state.get("runtime", {})
+    scan_interval = int(ctx.config["app"].get("scan_interval_seconds", 60))
+    stale_after = int(
+        ctx.config["app"].get("health_stale_after_seconds", max(180, scan_interval * 6))
+    )
+    heartbeat_text = (
+        runtime.get("last_scan_started_at")
+        if runtime.get("scan_in_progress")
+        else runtime.get("last_scan_completed_at") or runtime.get("last_scan_started_at")
+    )
+    heartbeat_age: float | None = None
+    if heartbeat_text:
+        try:
+            heartbeat = dt.datetime.fromisoformat(str(heartbeat_text))
+            current = now or dt.datetime.now(heartbeat.tzinfo or dt.timezone.utc)
+            if current.tzinfo is None:
+                current = current.replace(tzinfo=heartbeat.tzinfo or dt.timezone.utc)
+            heartbeat_age = max(0.0, (current - heartbeat).total_seconds())
+        except ValueError:
+            heartbeat_age = None
+    stale = heartbeat_age is None or heartbeat_age > stale_after
+    watchdog_required = ctx.broker is not None and ctx.orders_enabled
+    watchdog_age: float | None = None
+    watchdog_text = runtime.get("last_watchdog_completed_at") or runtime.get("last_watchdog_started_at")
+    if watchdog_text:
+        try:
+            watchdog_time = dt.datetime.fromisoformat(str(watchdog_text))
+            current = now or dt.datetime.now(watchdog_time.tzinfo or dt.timezone.utc)
+            if current.tzinfo is None:
+                current = current.replace(tzinfo=watchdog_time.tzinfo or dt.timezone.utc)
+            watchdog_age = max(0.0, (current - watchdog_time).total_seconds())
+        except ValueError:
+            watchdog_age = None
+    watchdog_stale_after = max(
+        10,
+        int(ctx.config["app"].get("protection_watchdog_seconds", 2)) * 5,
+    )
+    watchdog_stale = watchdog_required and (
+        watchdog_age is None or watchdog_age > watchdog_stale_after
+    )
+    broker_connected = bool(broker_status.get("connected", ctx.mode == "paper"))
+    healthy = not stale and not watchdog_stale and (ctx.mode == "paper" or broker_connected)
+    payload = {
+        "status": "ok" if healthy else "degraded",
+        "mode": ctx.mode,
+        "broker_provider": broker_provider(ctx),
+        "broker_name": broker_name(ctx) if ctx.broker is not None else "Paper",
+        "broker_connected": broker_connected,
+        "binance_connected": broker_connected,
+        "orders_enabled": ctx.orders_enabled,
+        "heartbeat_age_seconds": round(heartbeat_age, 1) if heartbeat_age is not None else None,
+        "stale_after_seconds": stale_after,
+        "scan_in_progress": bool(runtime.get("scan_in_progress")),
+        "last_scan_duration_seconds": runtime.get("last_scan_duration_seconds"),
+        "last_scan_symbol_errors": runtime.get("last_scan_symbol_errors"),
+        "consecutive_failures": int(runtime.get("consecutive_failures", 0)),
+        "watchdog_required": watchdog_required,
+        "watchdog_age_seconds": round(watchdog_age, 1) if watchdog_age is not None else None,
+        "watchdog_stale_after_seconds": watchdog_stale_after,
+        "last_watchdog_errors": runtime.get("last_watchdog_errors"),
+    }
+    return payload, 200 if healthy else 503
 
 
 def send_json(handler: BaseHTTPRequestHandler, payload: Any, status: int = 200) -> None:
@@ -1099,7 +1872,7 @@ def dashboard_html(app_name: str) -> str:
     .badge.danger {{ color: var(--red); border-color: #efb0b0; background: #fff1f1; }}
     .grid {{
       display: grid;
-      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
       gap: 12px;
       padding: 18px clamp(16px, 4vw, 42px);
     }}
@@ -1234,8 +2007,12 @@ def dashboard_html(app_name: str) -> str:
         <span class="badge" id="modeBadge">Режим: -</span>
         <span class="badge" id="brokerBadge">Binance: -</span>
         <span class="badge" id="ordersBadge">Ордера: -</span>
+        <span class="badge" id="heartbeatBadge">Цикл: -</span>
+        <span class="badge" id="watchdogBadge">Защита: -</span>
+        <span class="badge" id="mlBadge">ML: -</span>
       </div>
       <div class="muted" id="updated">Загрузка...</div>
+      <div class="muted" id="profileInfo"></div>
     </div>
     <button id="scanBtn">Проверить сейчас</button>
   </header>
@@ -1270,6 +2047,7 @@ def dashboard_html(app_name: str) -> str:
     <div class="card"><div class="label">Закрытый PnL</div><div class="value" id="pnl">-</div></div>
     <div class="card"><div class="label">Процент прибыльных</div><div class="value" id="winrate">-</div></div>
     <div class="card"><div class="label">Открытые позиции</div><div class="value" id="openpos">-</div></div>
+    <div class="card"><div class="label">Лимитные заявки</div><div class="value" id="pending">-</div></div>
   </div>
 
   <main>
@@ -1334,15 +2112,47 @@ async function loadState() {{
   const data = await res.json();
   currentMode = data.mode;
   document.getElementById('updated').textContent = `Обновлено: ${{data.updated_at || '-'}}`;
+  const profile = data.strategy_profile || {{}};
+  document.getElementById('profileInfo').textContent =
+    `Профиль: ${{profile.timeframe || '-'}} · RR 1:${{profile.reward_risk || '-'}} · ` +
+    `${{profile.ensemble_enabled ? `ML RR 1:${{profile.ensemble_reward_risk || '-'}} · ` : ''}}` +
+    `до ${{profile.max_holding_hours || '-'}} ч · тейк ${{String(profile.target_order_type || '-').toUpperCase()}} · ` +
+    `риск S/L ${{profile.short_risk_per_trade_percent ?? profile.risk_per_trade_percent ?? 0}}%/` +
+    `${{profile.long_risk_per_trade_percent ?? profile.risk_per_trade_percent ?? 0}}% · ${{profile.status || ''}}`;
   const connected = Boolean(data.broker_status?.connected);
   document.getElementById('modeBadge').textContent = `Режим: ${{String(data.mode || '-').toUpperCase()}}`;
   document.getElementById('modeBadge').className = `badge ${{data.mode === 'live' ? 'danger' : (data.mode === 'demo' ? 'warn' : 'ok')}}`;
-  document.getElementById('brokerBadge').textContent = `Binance: ${{connected ? 'подключён' : 'нет подключения'}}`;
+  document.getElementById('brokerBadge').textContent = `${{data.broker_name || 'Broker'}}: ${{connected ? 'подключён' : 'нет подключения'}}`;
   document.getElementById('brokerBadge').className = `badge ${{connected ? 'ok' : 'danger'}}`;
   document.getElementById('ordersBadge').textContent = `Ордера: ${{data.orders_enabled ? 'разрешены' : 'заблокированы'}}`;
   document.getElementById('ordersBadge').className = `badge ${{data.orders_enabled ? (data.mode === 'live' ? 'danger' : 'warn') : 'ok'}}`;
+  const health = data.health || {{}};
+  const sequence = Number(data.runtime?.scan_sequence || 0);
+  document.getElementById('heartbeatBadge').textContent =
+    `Цикл #${{sequence}}: ${{health.status === 'ok' ? 'OK' : 'НЕТ СВЕЖИХ ДАННЫХ'}}`;
+  document.getElementById('heartbeatBadge').className = `badge ${{health.status === 'ok' ? 'ok' : 'danger'}}`;
+  const watchdogRequired = Boolean(health.watchdog_required);
+  const watchdogAge = health.watchdog_age_seconds;
+  const watchdogOk = !watchdogRequired || (
+    watchdogAge !== null && watchdogAge !== undefined &&
+    Number(watchdogAge) <= Number(health.watchdog_stale_after_seconds || 10) &&
+    Number(health.last_watchdog_errors || 0) === 0
+  );
+  document.getElementById('watchdogBadge').textContent = watchdogRequired
+    ? `Защита: ${{watchdogOk ? 'активна' : 'ОШИБКА'}}`
+    : 'Защита: Paper';
+  document.getElementById('watchdogBadge').className = `badge ${{watchdogOk ? 'ok' : 'danger'}}`;
+  document.getElementById('watchdogBadge').title = watchdogRequired
+    ? `Последняя проверка ${{watchdogAge ?? '-'}} сек. назад`
+    : 'Биржевые защитные ордера не используются в Paper';
+  const ml = data.ensemble_status || {{}};
+  document.getElementById('mlBadge').textContent = !ml.enabled
+    ? 'ML: выключен'
+    : `ML: ${{ml.ready ? 'активен' : 'пауза'}}`;
+  document.getElementById('mlBadge').className = `badge ${{ml.ready ? 'ok' : (ml.enabled ? 'warn' : '')}}`;
+  document.getElementById('mlBadge').title = ml.message || '';
   const demoTestBar = document.getElementById('demoTestBar');
-  demoTestBar.hidden = !(data.mode === 'demo' && connected && data.orders_enabled);
+  demoTestBar.hidden = !(data.mode === 'demo' && data.broker_provider === 'binance' && connected && data.orders_enabled);
   const symbolSelect = document.getElementById('demoTestSymbol');
   const symbols = data.market?.symbols || [];
   const selectedSymbol = symbolSelect.value;
@@ -1353,6 +2163,7 @@ async function loadState() {{
   document.getElementById('pnl').className = `value ${{cls(data.stats.realized_pnl)}}`;
   document.getElementById('winrate').textContent = `${{money(data.stats.win_rate)}}%`;
   document.getElementById('openpos').textContent = data.stats.open_positions;
+  document.getElementById('pending').textContent = data.stats.pending_entries;
 
   const latest = Object.values(data.latest || {{}});
   document.getElementById('latestRows').innerHTML = latest.length
@@ -1522,27 +2333,24 @@ def make_handler(controller: RuntimeController) -> type[BaseHTTPRequestHandler]:
         def do_GET(self) -> None:  # noqa: N802
             ctx = self.current_ctx()
             if self.path == "/health":
-                with ctx.lock:
-                    state = ensure_state(ctx)
-                    broker_status = state.get("broker_status", {})
-                send_json(
-                    self,
-                    {
-                        "status": "ok",
-                        "mode": ctx.mode,
-                        "binance_connected": broker_status.get("connected", ctx.mode == "paper"),
-                        "orders_enabled": ctx.orders_enabled,
-                    },
-                )
+                try:
+                    state = json.loads(ctx.state_path.read_text(encoding="utf-8"))
+                except (FileNotFoundError, json.JSONDecodeError):
+                    state = {}
+                payload, status = health_snapshot(ctx, state)
+                send_json(self, payload, status=status)
                 return
             if self.path == "/api/config":
                 safe_config = json.loads(json.dumps(ctx.config))
                 send_json(self, safe_config)
                 return
             if self.path == "/api/state":
-                with ctx.lock:
-                    state = ensure_state(ctx)
-                    payload = public_state(ctx, state)
+                try:
+                    state = json.loads(ctx.state_path.read_text(encoding="utf-8"))
+                except (FileNotFoundError, json.JSONDecodeError):
+                    with ctx.lock:
+                        state = ensure_state(ctx)
+                payload = public_state(ctx, state)
                 payload["mode_control"] = self.mode_control()
                 send_json(self, payload)
                 return
@@ -1621,10 +2429,13 @@ def build_context(
     mode = str(broker_config.get("mode", config.get("account", {}).get("mode", "paper"))).lower()
     if mode not in ("paper", "demo", "live"):
         raise ValueError("broker.mode must be paper, demo or live.")
+    provider = str(broker_config.get("provider", "binance")).lower()
+    if provider not in ("binance", "mt5"):
+        raise ValueError("broker.provider must be binance or mt5.")
 
-    broker: BinanceFuturesBroker | None = None
+    broker: BrokerAdapter | None = None
     effective_orders_enabled = True
-    if mode != "paper":
+    if mode != "paper" and provider == "binance":
         key_prefix = "BINANCE_DEMO" if mode == "demo" else "BINANCE_LIVE"
         broker = BinanceFuturesBroker(
             environment=mode,
@@ -1638,12 +2449,36 @@ def build_context(
             margin_type=str(broker_config.get("margin_type", "ISOLATED")),
             working_type=str(broker_config.get("working_type", "MARK_PRICE")),
             price_protect=bool(broker_config.get("price_protect", False)),
+            target_order_type=str(config.get("strategy", {}).get("target_order_type", "market")),
         )
         config.setdefault("market", {})["base_url"] = broker.base_url
         effective_orders_enabled = orders_enabled
+    elif mode != "paper":
+        login_env = str(broker_config.get("login_env", "MT5_LOGIN"))
+        password_env = str(broker_config.get("password_env", "MT5_PASSWORD"))
+        server_env = str(broker_config.get("server_env", "MT5_SERVER"))
+        terminal_path_env = str(broker_config.get("terminal_path_env", "MT5_TERMINAL_PATH"))
+        login_text = os.environ.get(login_env, "").strip()
+        broker = MT5Broker(
+            environment=mode,
+            orders_enabled=orders_enabled,
+            login=int(login_text) if login_text else None,
+            password=os.environ.get(password_env, ""),
+            server=os.environ.get(server_env, ""),
+            terminal_path=os.environ.get(terminal_path_env, "") or None,
+            live_confirmation=live_confirmation,
+            symbol_map={
+                str(key).upper(): str(value)
+                for key, value in dict(broker_config.get("symbol_map", {})).items()
+            },
+            magic=int(broker_config.get("magic", 260802)),
+            deviation_points=int(broker_config.get("deviation_points", 20)),
+        )
+        effective_orders_enabled = orders_enabled
 
-    state_name = "state.json" if mode == "paper" else f"state_{mode}.json"
-    trades_name = "trades.csv" if mode == "paper" else f"trades_{mode}.csv"
+    state_prefix = "" if provider == "binance" else f"{provider}_"
+    state_name = "state.json" if mode == "paper" else f"state_{state_prefix}{mode}.json"
+    trades_name = "trades.csv" if mode == "paper" else f"trades_{state_prefix}{mode}.csv"
     return BotContext(
         config=config,
         state_path=data_dir / state_name,
@@ -1683,27 +2518,62 @@ class RuntimeController:
         self.wake_event = threading.Event()
 
         config_path = config_path.resolve()
-        self.profile_paths = {
-            mode: config_path.parent / filename for mode, filename in self.PROFILE_FILES.items()
-        }
+        profile_files = dict(self.PROFILE_FILES)
+        if ".regime-scalp." in config_path.name:
+            profile_files = {
+                "paper": "config.paper.regime-scalp.example.json",
+                "demo": "config.demo.regime-scalp.example.json",
+                "live": "config.live.regime-scalp.example.json",
+            }
+        if ".ensemble-15m." in config_path.name:
+            profile_files = {
+                "paper": "config.paper.ensemble-15m.example.json",
+                "demo": "config.demo.ensemble-15m.example.json",
+                "live": "config.live.ensemble-15m.example.json",
+            }
+        if ".asymmetric-15m." in config_path.name:
+            profile_files = {
+                "paper": "config.paper.asymmetric-15m.example.json",
+                "demo": "config.demo.asymmetric-15m.example.json",
+                "live": "config.live.asymmetric-15m.example.json",
+            }
+        self.profile_paths = {mode: config_path.parent / filename for mode, filename in profile_files.items()}
         self.profile_paths[initial_ctx.mode] = config_path
 
     def current(self) -> BotContext:
         with self._lock:
             return self._ctx
 
+    def _provider_for_mode(self, mode: str) -> str:
+        path = self.profile_paths.get(mode)
+        if path is None or not path.exists():
+            return "binance"
+        try:
+            with path.open("r", encoding="utf-8") as source:
+                profile = json.load(source)
+            return str(profile.get("broker", {}).get("provider", "binance")).lower()
+        except (OSError, ValueError, TypeError):
+            return "binance"
+
     def _availability(self, mode: str) -> tuple[bool, str]:
         path = self.profile_paths.get(mode)
         if path is None or not path.exists():
             return False, f"Не найден конфиг для режима {mode.upper()}."
+        provider = self._provider_for_mode(mode)
         if mode == "demo":
-            if not os.environ.get("BINANCE_DEMO_API_KEY") or not os.environ.get("BINANCE_DEMO_API_SECRET"):
-                return False, "Сначала добавь BINANCE_DEMO_API_KEY и BINANCE_DEMO_API_SECRET."
+            if provider == "binance":
+                if not os.environ.get("BINANCE_DEMO_API_KEY") or not os.environ.get("BINANCE_DEMO_API_SECRET"):
+                    return False, "Сначала добавь BINANCE_DEMO_API_KEY и BINANCE_DEMO_API_SECRET."
+            elif not all(os.environ.get(name) for name in ("MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER")):
+                return False, "Сначала добавь MT5_LOGIN, MT5_PASSWORD и MT5_SERVER."
         if mode == "live":
             if not self.allow_live_ui:
                 return False, "Live заблокирован. Запусти бота с --allow-live-ui."
-            if not os.environ.get("BINANCE_LIVE_API_KEY") or not os.environ.get("BINANCE_LIVE_API_SECRET"):
-                return False, "Сначала добавь BINANCE_LIVE_API_KEY и BINANCE_LIVE_API_SECRET."
+            if provider == "binance":
+                if not os.environ.get("BINANCE_LIVE_API_KEY") or not os.environ.get("BINANCE_LIVE_API_SECRET"):
+                    return False, "Сначала добавь BINANCE_LIVE_API_KEY и BINANCE_LIVE_API_SECRET."
+            elif not all(os.environ.get(name) for name in ("MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER")):
+                return False, "Сначала добавь MT5_LOGIN, MT5_PASSWORD и MT5_SERVER."
         return True, ""
 
     def mode_control(self, *, is_local: bool) -> dict[str, Any]:
@@ -1712,14 +2582,15 @@ class RuntimeController:
         options: dict[str, Any] = {}
         for mode in ("paper", "demo", "live"):
             available, reason = self._availability(mode)
+            provider_name = "MT5" if self._provider_for_mode(mode) == "mt5" else "Binance"
             if mode == "paper":
                 summary = "Виртуальный баланс, реальные ордера не отправляются."
             elif mode == "demo":
                 order_text = "разрешены" if self.orders_enabled else "заблокированы при запуске"
-                summary = f"Binance Demo, тестовые ордера {order_text}."
+                summary = f"{provider_name} Demo, тестовые ордера {order_text}."
             else:
                 order_text = "разрешены" if self.orders_enabled else "заблокированы при запуске"
-                summary = f"Реальный Binance, ордера {order_text}."
+                summary = f"Реальный {provider_name}, ордера {order_text}."
             options[mode] = {
                 "available": available,
                 "reason": reason,
@@ -1761,6 +2632,13 @@ class RuntimeController:
                         "Нельзя сменить режим, пока бот ведёт открытую позицию: "
                         f"{symbols}. Дождись её закрытия."
                     )
+                pending_entries = current_state.get("pending_entries", {})
+                if pending_entries:
+                    symbols = ", ".join(sorted(pending_entries))
+                    raise ValueError(
+                        "Нельзя сменить режим, пока лимитная заявка ожидает исполнения: "
+                        f"{symbols}. Дождись заполнения или отмены."
+                    )
 
             target = build_context(
                 self.profile_paths[mode],
@@ -1789,10 +2667,12 @@ class RuntimeController:
 
 def run_server(controller: RuntimeController) -> None:
     ctx = controller.current()
-    host = str(ctx.config["app"].get("host", "0.0.0.0"))
-    port = int(ctx.config["app"].get("port", 8090))
+    host = os.environ.get("HOST", str(ctx.config["app"].get("host", "0.0.0.0")))
+    port = int(os.environ.get("PORT", ctx.config["app"].get("port", 8090)))
     thread = threading.Thread(target=worker_loop, args=(controller,), daemon=True)
     thread.start()
+    watchdog = threading.Thread(target=protection_watchdog_loop, args=(controller,), daemon=True)
+    watchdog.start()
     server = ThreadingHTTPServer((host, port), make_handler(controller))
     print(f"{ctx.config['app']['name']} listening on http://{host}:{port}")
     print("Dashboard: http://127.0.0.1:%d" % port)
@@ -1836,26 +2716,9 @@ def main() -> int:
     ensure_trades_file(ctx)
     state = ensure_state(ctx)
     if args.check:
-        if ctx.broker is None:
-            print(json.dumps({"status": "ok", "mode": "paper", "message": "No Binance keys required."}, indent=2))
-            return 0
-        summary = ctx.broker.account_summary()
-        print(
-            json.dumps(
-                {
-                    "status": "ok",
-                    "environment": summary["environment"],
-                    "asset": summary["asset"],
-                    "balance": summary["balance"],
-                    "available_balance": summary["available_balance"],
-                    "open_positions": len(summary["positions"]),
-                    "position_mode": summary["position_mode"],
-                    "orders_enabled": summary["orders_enabled"],
-                },
-                indent=2,
-            )
-        )
-        return 0
+        readiness = broker_readiness_snapshot(ctx)
+        print(json.dumps(readiness, indent=2))
+        return 0 if readiness["ready"] else 1
     if args.once:
         payload = scan_once(ctx)
         for result in payload["results"]:

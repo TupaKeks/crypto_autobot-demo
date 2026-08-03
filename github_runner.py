@@ -173,6 +173,13 @@ def write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
     temp.replace(path)
 
 
+def validate_one_shot_order_safety(config: dict[str, Any], orders_enabled: bool) -> None:
+    if orders_enabled and str(config["strategy"].get("entry_order_type")) == "limit_retrace":
+        raise ValueError(
+            "One-shot GitHub runs cannot safely leave a limit entry waiting without continuous protection."
+        )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run one Binance Demo scan for GitHub Actions.")
     parser.add_argument("--config", type=Path, default=Path("crypto_autobot/config.demo.example.json"))
@@ -186,6 +193,7 @@ def main() -> int:
     context = build_context(args.config, orders_enabled=args.enable_orders)
     if context.mode != "demo" or context.broker is None or context.broker.environment != "demo":
         raise ValueError("GitHub runner accepts Binance Demo configuration only.")
+    validate_one_shot_order_safety(context.config, args.enable_orders)
 
     result = scan_once(context)
     repository = os.environ.get("GITHUB_REPOSITORY", "")
