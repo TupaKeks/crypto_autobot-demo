@@ -200,6 +200,23 @@ def write_mode_configs(root: Path, data_dir: str) -> dict[str, Path]:
     return paths
 
 
+def seed_passing_demo_validation(data_dir: str) -> None:
+    created_at = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=31)
+    pnl_values = [3.2, -2.0] * 60
+    trades = []
+    for pnl in pnl_values:
+        trades.append({"event": "open", "pnl": 0})
+        trades.append({"event": "close", "pnl": pnl})
+    state = {
+        "created_at": created_at.isoformat(),
+        "initial_balance": 1000,
+        "balance": 1000 + sum(pnl_values),
+        "realized_pnl": sum(pnl_values),
+        "trades": trades,
+    }
+    (Path(data_dir) / "state_demo.json").write_text(json.dumps(state), encoding="utf-8")
+
+
 class BinanceMathTests(unittest.TestCase):
     def test_broker_positions_are_normalized_for_the_runtime(self):
         binance = normalize_broker_position({
@@ -1421,11 +1438,66 @@ class BotModeTests(unittest.TestCase):
                     orders_enabled=True,
                     allow_live_ui=True,
                 )
+                seed_passing_demo_validation(tmp)
                 with self.assertRaisesRegex(ValueError, "точную фразу"):
                     unlocked.switch_mode("live", confirmation="wrong")
                 result = unlocked.switch_mode("live", confirmation=LIVE_CONFIRMATION)
             self.assertTrue(result["changed"])
             self.assertEqual(unlocked.current().mode, "live")
+
+    def test_runtime_live_is_blocked_until_demo_forward_gate_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = write_mode_configs(Path(tmp), tmp)
+            paper = build_context(paths["paper"])
+            controller = RuntimeController(
+                paper,
+                paths["paper"],
+                orders_enabled=True,
+                allow_live_ui=True,
+            )
+            with patch.dict(
+                "os.environ",
+                {
+                    "BINANCE_LIVE_API_KEY": "live-key",
+                    "BINANCE_LIVE_API_SECRET": "live-secret",
+                },
+                clear=False,
+            ):
+                with self.assertRaisesRegex(ValueError, "Live gate"):
+                    controller.switch_mode("live", confirmation=LIVE_CONFIRMATION)
+
+            report = controller.mode_control(is_local=True)["forward_validation"]
+            self.assertEqual(report["status"], "collecting")
+            self.assertFalse(report["ready_for_live"])
+
+    def test_direct_live_runtime_cannot_bypass_forward_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = write_mode_configs(Path(tmp), tmp)
+            with patch.dict(
+                "os.environ",
+                {
+                    "BINANCE_LIVE_API_KEY": "live-key",
+                    "BINANCE_LIVE_API_SECRET": "live-secret",
+                },
+                clear=False,
+            ):
+                live = build_context(
+                    paths["live"],
+                    orders_enabled=True,
+                    live_confirmation=LIVE_CONFIRMATION,
+                )
+            controller = RuntimeController(
+                live,
+                paths["live"],
+                orders_enabled=True,
+                allow_live_ui=True,
+            )
+            with self.assertRaisesRegex(ValueError, "Live gate"):
+                controller.require_live_forward_gate()
+
+            seed_passing_demo_validation(tmp)
+            report = controller.require_live_forward_gate()
+            self.assertTrue(report["ready_for_live"])
 
     def test_runtime_does_not_abandon_an_open_position(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 try:
     from .broker_interface import BrokerAdapter
     from .binance_futures import BinanceFuturesBroker, LIVE_CONFIRMATION
+    from .forward_validation import forward_validation_report
     from .mt5_broker import MT5Broker
     from .strategy_intraday import build_indicators as build_intraday_indicators
     from .strategy_intraday import evaluate_strategy_signal, minimum_history as intraday_minimum_history
@@ -31,6 +32,7 @@ try:
 except ImportError:
     from broker_interface import BrokerAdapter
     from binance_futures import BinanceFuturesBroker, LIVE_CONFIRMATION
+    from forward_validation import forward_validation_report
     from mt5_broker import MT5Broker
     from strategy_intraday import build_indicators as build_intraday_indicators
     from strategy_intraday import evaluate_strategy_signal, minimum_history as intraday_minimum_history
@@ -1332,6 +1334,10 @@ def scan_once(ctx: BotContext) -> dict[str, Any]:
         runtime["scan_sequence"] = int(runtime.get("scan_sequence", 0)) + 1
         runtime["scan_in_progress"] = True
         runtime["last_scan_started_at"] = now_iso(ctx.timezone)
+        active_dates = state.setdefault("validation_active_dates", [])
+        active_date = today_key(ctx.timezone)
+        if active_date not in active_dates:
+            active_dates.append(active_date)
         write_state(ctx, state)
 
     account_summary: dict[str, Any] | None = None
@@ -1940,7 +1946,7 @@ def dashboard_html(app_name: str) -> str:
     .badge.danger {{ color: var(--red); border-color: #efb0b0; background: #fff1f1; }}
     .grid {{
       display: grid;
-      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
       gap: 12px;
       padding: 18px clamp(16px, 4vw, 42px);
     }}
@@ -2078,6 +2084,7 @@ def dashboard_html(app_name: str) -> str:
         <span class="badge" id="heartbeatBadge">Цикл: -</span>
         <span class="badge" id="watchdogBadge">Защита: -</span>
         <span class="badge" id="mlBadge">ML: -</span>
+        <span class="badge" id="validationBadge">Live gate: -</span>
       </div>
       <div class="muted" id="updated">Загрузка...</div>
       <div class="muted" id="profileInfo"></div>
@@ -2114,8 +2121,11 @@ def dashboard_html(app_name: str) -> str:
     <div class="card"><div class="label">Средства с открытым PnL</div><div class="value" id="equity">-</div></div>
     <div class="card"><div class="label">Закрытый PnL</div><div class="value" id="pnl">-</div></div>
     <div class="card"><div class="label">Процент прибыльных</div><div class="value" id="winrate">-</div></div>
+    <div class="card"><div class="label">Profit factor</div><div class="value" id="profitFactor">-</div></div>
+    <div class="card"><div class="label">Сделок в день</div><div class="value" id="tradesPerDay">-</div></div>
     <div class="card"><div class="label">Открытые позиции</div><div class="value" id="openpos">-</div></div>
     <div class="card"><div class="label">Лимитные заявки</div><div class="value" id="pending">-</div></div>
+    <div class="card"><div class="label">Макс. Demo-просадка</div><div class="value" id="maxDrawdown">-</div></div>
   </div>
 
   <main>
@@ -2125,6 +2135,14 @@ def dashboard_html(app_name: str) -> str:
         <div class="tablewrap"><table>
           <thead><tr><th>Пара</th><th>Цена</th><th>Свеча</th><th>Решение бота</th></tr></thead>
           <tbody id="latestRows"></tbody>
+        </table></div>
+      </section>
+      <section>
+        <h2>Готовность к Live</h2>
+        <div class="log" id="validationSummary">Собираем данные...</div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Критерий</th><th>Сейчас</th><th>Нужно</th><th>Статус</th></tr></thead>
+          <tbody id="validationRows"></tbody>
         </table></div>
       </section>
       <section>
@@ -2219,6 +2237,14 @@ async function loadState() {{
     : `ML: ${{ml.ready ? 'активен' : 'пауза'}}`;
   document.getElementById('mlBadge').className = `badge ${{ml.ready ? 'ok' : (ml.enabled ? 'warn' : '')}}`;
   document.getElementById('mlBadge').title = ml.message || '';
+  const validation = data.mode_control?.forward_validation || {{}};
+  const validationReady = Boolean(validation.ready_for_live);
+  const validationStatus = validation.status || 'collecting';
+  document.getElementById('validationBadge').textContent = validationReady
+    ? 'Live gate: ПРОЙДЕН'
+    : (validationStatus === 'failed' ? 'Live gate: НЕ ПРОЙДЕН' : 'Live gate: СБОР ДАННЫХ');
+  document.getElementById('validationBadge').className = `badge ${{validationReady ? 'ok' : (validationStatus === 'failed' ? 'danger' : 'warn')}}`;
+  document.getElementById('validationBadge').title = validation.summary || '';
   const demoTestBar = document.getElementById('demoTestBar');
   demoTestBar.hidden = !(data.mode === 'demo' && data.broker_provider === 'binance' && connected && data.orders_enabled);
   const symbolSelect = document.getElementById('demoTestSymbol');
@@ -2230,8 +2256,19 @@ async function loadState() {{
   document.getElementById('pnl').textContent = `$${{money(data.stats.realized_pnl)}}`;
   document.getElementById('pnl').className = `value ${{cls(data.stats.realized_pnl)}}`;
   document.getElementById('winrate').textContent = `${{money(data.stats.win_rate)}}%`;
+  document.getElementById('profitFactor').textContent = validation.profit_factor_infinite
+    ? '∞'
+    : (validation.profit_factor === null || validation.profit_factor === undefined ? '-' : money(validation.profit_factor));
+  document.getElementById('tradesPerDay').textContent = money(validation.trades_per_day);
   document.getElementById('openpos').textContent = data.stats.open_positions;
   document.getElementById('pending').textContent = data.stats.pending_entries;
+  document.getElementById('maxDrawdown').textContent = `${{money(validation.max_drawdown_percent)}}%`;
+
+  document.getElementById('validationSummary').textContent = validation.summary || 'Demo-выборка ещё не создана.';
+  const validationChecks = validation.checks || [];
+  document.getElementById('validationRows').innerHTML = validationChecks.length
+    ? validationChecks.map(item => `<tr><td>${{esc(item.label)}}</td><td>${{esc(item.display_value || item.value)}}</td><td>${{esc(item.target)}}</td><td class="${{item.passed ? 'green' : 'red'}}">${{item.passed ? 'OK' : 'ЖДЁМ'}}</td></tr>`).join('')
+    : emptyRow(4, 'Demo-метрики недоступны');
 
   const latest = Object.values(data.latest || {{}});
   document.getElementById('latestRows').innerHTML = latest.length
@@ -2261,7 +2298,7 @@ async function loadState() {{
     const option = options[mode] || {{}};
     btn.classList.toggle('active', mode === data.mode);
     btn.classList.toggle('unavailable', !option.available);
-    btn.disabled = switchingMode || mode === data.mode || !control.control_available;
+    btn.disabled = switchingMode || mode === data.mode || !control.control_available || !option.available;
     btn.title = option.reason || '';
   }});
   const currentOption = options[data.mode] || {{}};
@@ -2623,6 +2660,39 @@ class RuntimeController:
         except (OSError, ValueError, TypeError):
             return "binance"
 
+    def _demo_forward_validation(self) -> dict[str, Any]:
+        path = self.profile_paths.get("demo")
+        if path is None or not path.exists():
+            return {
+                "status": "missing",
+                "ready_for_live": False,
+                "summary": "Не найден Demo-профиль для forward-валидации.",
+                "checks": [],
+            }
+        try:
+            config = load_config(path)
+            data_dir = Path(str(config["app"].get("data_dir", "crypto_autobot/data")))
+            provider = str(config.get("broker", {}).get("provider", "binance")).lower()
+            prefix = "" if provider == "binance" else f"{provider}_"
+            state_path = data_dir / f"state_{prefix}demo.json"
+            if state_path.exists():
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+            else:
+                state = {
+                    "created_at": None,
+                    "initial_balance": float(config.get("account", {}).get("initial_balance", 0.0)),
+                    "realized_pnl": 0.0,
+                    "trades": [],
+                }
+            return forward_validation_report(config, state)
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            return {
+                "status": "error",
+                "ready_for_live": False,
+                "summary": f"Не удалось проверить Demo-статистику: {exc}",
+                "checks": [],
+            }
+
     def _availability(self, mode: str) -> tuple[bool, str]:
         path = self.profile_paths.get(mode)
         if path is None or not path.exists():
@@ -2637,6 +2707,9 @@ class RuntimeController:
         if mode == "live":
             if not self.allow_live_ui:
                 return False, "Live заблокирован. Запусти бота с --allow-live-ui."
+            validation = self._demo_forward_validation()
+            if not validation.get("ready_for_live", False):
+                return False, f"Live gate: {validation.get('summary', 'Demo-валидация не пройдена.')}"
             if provider == "binance":
                 if not os.environ.get("BINANCE_LIVE_API_KEY") or not os.environ.get("BINANCE_LIVE_API_SECRET"):
                     return False, "Сначала добавь BINANCE_LIVE_API_KEY и BINANCE_LIVE_API_SECRET."
@@ -2666,6 +2739,7 @@ class RuntimeController:
             }
         return {
             "options": options,
+            "forward_validation": self._demo_forward_validation(),
             "requires_token": requires_token,
             "control_available": control_available,
             "control_reason": (
@@ -2675,6 +2749,12 @@ class RuntimeController:
             ),
             "live_confirmation": LIVE_CONFIRMATION,
         }
+
+    def require_live_forward_gate(self) -> dict[str, Any]:
+        report = self._demo_forward_validation()
+        if self._ctx.mode == "live" and self.orders_enabled and not report.get("ready_for_live", False):
+            raise ValueError(f"Live gate: {report.get('summary', 'Demo-валидация не пройдена.')}")
+        return report
 
     def switch_mode(self, mode: str, *, confirmation: str = "") -> dict[str, Any]:
         if mode not in ("paper", "demo", "live"):
@@ -2787,17 +2867,22 @@ def main() -> int:
         readiness = broker_readiness_snapshot(ctx)
         print(json.dumps(readiness, indent=2))
         return 0 if readiness["ready"] else 1
-    if args.once:
-        payload = scan_once(ctx)
-        for result in payload["results"]:
-            print(f"{result.get('symbol')}: {result.get('status')}")
-        return 0
     controller = RuntimeController(
         ctx,
         Path(args.config),
         orders_enabled=args.enable_orders,
         allow_live_ui=args.allow_live_ui,
     )
+    try:
+        controller.require_live_forward_gate()
+    except ValueError as exc:
+        print(f"Startup blocked: {exc}", file=sys.stderr)
+        return 2
+    if args.once:
+        payload = scan_once(ctx)
+        for result in payload["results"]:
+            print(f"{result.get('symbol')}: {result.get('status')}")
+        return 0
     run_server(controller)
     return 0
 
