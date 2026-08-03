@@ -161,7 +161,9 @@ reduce-only лимитный Take Profit. Оба ордера проверяют
 запустит сервис через `launchd`.
 
 Сервис автоматически запускается после входа в macOS и перезапускается после
-сбоя. Логи находятся в `~/Library/Application Support/CryptoAutobot/crypto_autobot/data/launchd`.
+сбоя. Demo-панель открывается на `http://127.0.0.1:8091`, а Paper может
+параллельно работать на `8090`. Логи находятся в
+`~/Library/Application Support/CryptoAutobot/crypto_autobot/data/launchd`.
 Остановить и удалить
 автозапуск можно файлом `crypto_autobot/uninstall_macos_demo_service.command`.
 Ключи при удалении сервиса остаются в Keychain, чтобы случайно не потерять их.
@@ -280,7 +282,8 @@ Binance secrets и отправки ордеров.
 Для Binance Demo используй один из двух непрерывных вариантов:
 
 1. Mac: `install_macos_demo_service.command` хранит ключи в Keychain и запускает
-   бота через `launchd` после входа в macOS.
+   бота через `launchd` после входа в macOS. Demo-панель доступна на
+   `http://127.0.0.1:8091` и не мешает Paper-процессу на `8090`.
 2. Европейский VPS: `compose.demo.yml` перезапускает контейнер и хранит
    состояние в постоянном `data/`.
 
@@ -453,11 +456,10 @@ python crypto_autobot/bot.py \
   --enable-orders
 ```
 
-Для постоянного запуска на Mac дважды нажми `install_macos_demo_service.command`.
-Установщик сначала проверит Demo-доступ без заявки, сохранит ключи в macOS Keychain,
-а затем установит рабочую копию в `~/Library/Application Support/CryptoAutobot`.
-Это нужно потому, что фоновым службам macOS может быть запрещён доступ к проектам внутри
-`Documents`. Demo-статистика фоновой службы хранится внутри этой рабочей копии.
+Для постоянного MT5-запуска нужна Windows-машина или Windows VPS с постоянно
+запущенным терминалом MetaTrader 5. Фоновый запуск настраивается там через
+Task Scheduler или менеджер Windows-служб. `install_macos_demo_service.command`
+относится только к Binance Demo и MT5 не устанавливает.
 
 По официальной схеме MetaQuotes Python-модуль подключается к работающему терминалу через
 [`initialize`](https://www.mql5.com/en/docs/python_metatrader5/mt5initialize_py), а заявки отправляются через

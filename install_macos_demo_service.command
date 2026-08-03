@@ -63,14 +63,13 @@ with path.open("wb") as target:
 PY
 
 chmod 600 "$PLIST"
-pkill -f 'crypto_autobot/bot.py.*config\.(paper|demo)\.' 2>/dev/null || true
 /bin/launchctl bootout "gui/$UID/$LABEL" 2>/dev/null || true
 /bin/launchctl bootstrap "gui/$UID" "$PLIST"
 /bin/launchctl kickstart -k "gui/$UID/$LABEL"
 
 READY=false
 for _ in {1..30}; do
-  if /usr/bin/curl -fsS --max-time 2 http://127.0.0.1:8090/health 2>/dev/null \
+  if /usr/bin/curl -fsS --max-time 2 http://127.0.0.1:8091/health 2>/dev/null \
     | /usr/bin/grep -q '"mode": "demo"'; then
     READY=true
     break
@@ -85,6 +84,6 @@ if [[ "$READY" != true ]]; then
 fi
 
 echo
-echo "Binance Demo service started. Dashboard: http://127.0.0.1:8090"
+echo "Binance Demo service started. Dashboard: http://127.0.0.1:8091"
 echo "Runtime copy: $RUNTIME_ROOT"
 echo "It restarts automatically while this Mac is powered on and you are logged in."

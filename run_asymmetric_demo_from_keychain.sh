@@ -14,6 +14,7 @@ export BINANCE_DEMO_API_KEY="$(/usr/bin/security find-generic-password \
   -a "$USER" -s "crypto-autobot-binance-demo-key" -w)"
 export BINANCE_DEMO_API_SECRET="$(/usr/bin/security find-generic-password \
   -a "$USER" -s "crypto-autobot-binance-demo-secret" -w)"
+export PORT="${CRYPTO_AUTOBOT_PORT:-8091}"
 
 cd "$RUNTIME_ROOT"
 exec /usr/bin/caffeinate -i "$PYTHON" "$BOT_DIR/bot.py" \
