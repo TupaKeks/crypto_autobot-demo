@@ -68,7 +68,7 @@ chmod 600 "$PLIST"
 /bin/launchctl kickstart -k "gui/$UID/$LABEL"
 
 READY=false
-for _ in {1..30}; do
+for _ in {1..90}; do
   if /usr/bin/curl -fsS --max-time 2 http://127.0.0.1:8091/health 2>/dev/null \
     | /usr/bin/grep -q '"mode": "demo"'; then
     READY=true

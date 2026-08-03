@@ -1135,10 +1135,12 @@ def scan_symbol(
     state: dict[str, Any],
     symbol: str,
     btc_candles: list[Candle] | None = None,
+    candles: list[Candle] | None = None,
 ) -> dict[str, Any]:
     market = ctx.config["market"]
     strategy = ctx.config["strategy"]
-    candles = fetch_market_candles(ctx, symbol)
+    if candles is None:
+        candles = fetch_market_candles(ctx, symbol)
     strategy_type = str(strategy.get("type", "legacy_breakout"))
     if strategy_type in INTRADAY_STRATEGIES:
         min_needed = intraday_minimum_history(strategy)
@@ -1306,37 +1308,67 @@ def scan_symbol(
 
 
 def scan_once(ctx: BotContext) -> dict[str, Any]:
+    started_monotonic = time.monotonic()
     with ctx.lock:
         ensure_trades_file(ctx)
         state = ensure_state(ctx)
         runtime = state.setdefault("runtime", {})
-        started_monotonic = time.monotonic()
         runtime["scan_sequence"] = int(runtime.get("scan_sequence", 0)) + 1
         runtime["scan_in_progress"] = True
         runtime["last_scan_started_at"] = now_iso(ctx.timezone)
         write_state(ctx, state)
         refresh_exchange_account(ctx, state)
-        results: list[dict[str, Any]] = []
-        error_count = 0
-        btc_candles: list[Candle] | None = None
-        ml_runtime_status = orderflow_model_status(ctx.config.get("ensemble", {}), ROOT)
+        write_state(ctx, state)
+
+    results: list[dict[str, Any]] = []
+    error_count = 0
+    btc_candles: list[Candle] | None = None
+    ml_runtime_status = orderflow_model_status(ctx.config.get("ensemble", {}), ROOT)
+    with ctx.lock:
+        state = ensure_state(ctx)
+        runtime = state.setdefault("runtime", {})
         runtime["ensemble"] = ml_runtime_status
-        if ml_runtime_status.get("ready", False):
-            market = ctx.config["market"]
-            try:
-                btc_candles = fetch_market_candles(ctx, "BTCUSDT")
-            except Exception as exc:  # noqa: BLE001
+        write_state(ctx, state)
+
+    if ml_runtime_status.get("ready", False):
+        try:
+            btc_candles = fetch_market_candles(ctx, "BTCUSDT")
+        except Exception as exc:  # noqa: BLE001
+            with ctx.lock:
+                state = ensure_state(ctx)
                 log_event(state, f"BTCUSDT: ML reference error: {exc}", ctx.timezone)
-        for symbol in ctx.config["market"]["symbols"]:
-            try:
-                result = scan_symbol(ctx, state, str(symbol).upper(), btc_candles)
+                write_state(ctx, state)
+
+    for configured_symbol in ctx.config["market"]["symbols"]:
+        symbol = str(configured_symbol).upper()
+        try:
+            # Network I/O stays outside the state lock so the protection watchdog
+            # can reconcile filled entries and SL/TP while a market scan is slow.
+            candles = fetch_market_candles(ctx, symbol)
+            with ctx.lock:
+                state = ensure_state(ctx)
+                result = scan_symbol(
+                    ctx,
+                    state,
+                    symbol,
+                    btc_candles,
+                    candles,
+                )
                 results.append(result)
-                state.setdefault("latest", {})[str(symbol).upper()] = result
-            except Exception as exc:  # noqa: BLE001
-                error_count += 1
-                message = f"{symbol}: scan error: {exc}"
-                results.append({"symbol": symbol, "status": message})
+                state.setdefault("latest", {})[symbol] = result
+                write_state(ctx, state)
+        except Exception as exc:  # noqa: BLE001
+            error_count += 1
+            message = f"{symbol}: scan error: {exc}"
+            results.append({"symbol": symbol, "status": message})
+            with ctx.lock:
+                state = ensure_state(ctx)
                 log_event(state, message, ctx.timezone)
+                write_state(ctx, state)
+
+    with ctx.lock:
+        state = ensure_state(ctx)
+        runtime = state.setdefault("runtime", {})
         runtime["scan_in_progress"] = False
         runtime["last_scan_completed_at"] = now_iso(ctx.timezone)
         runtime["last_scan_duration_seconds"] = round(time.monotonic() - started_monotonic, 3)

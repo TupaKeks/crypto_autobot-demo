@@ -41,6 +41,7 @@ from crypto_autobot.bot import (
     place_pending_entry,
     public_state,
     reconcile_pending_entry,
+    scan_once,
     write_state,
     load_config,
 )
@@ -518,6 +519,45 @@ class HealthSnapshotTests(unittest.TestCase):
 
 
 class BotModeTests(unittest.TestCase):
+    def test_slow_market_fetch_does_not_block_protection_watchdog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            broker = FakeBroker()
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            fetch_started = threading.Event()
+            release_fetch = threading.Event()
+
+            def slow_fetch(*_args, **_kwargs):
+                fetch_started.set()
+                release_fetch.wait(1)
+                raise TimeoutError("simulated slow market feed")
+
+            with patch("crypto_autobot.bot.fetch_market_candles", side_effect=slow_fetch):
+                scan_thread = threading.Thread(target=scan_once, args=(ctx,))
+                scan_thread.start()
+                self.assertTrue(fetch_started.wait(0.5))
+
+                watchdog = broker_watchdog_once(ctx)
+                self.assertEqual(watchdog["status"], "ok")
+                self.assertIsNotNone(
+                    ensure_state(ctx)["runtime"].get("last_watchdog_completed_at")
+                )
+
+                release_fetch.set()
+                scan_thread.join(2)
+                self.assertFalse(scan_thread.is_alive())
+
     def test_asymmetric_profile_enables_both_sides_with_smaller_long_risk(self):
         path = Path(__file__).parents[1] / "config.paper.asymmetric-15m.example.json"
         config = load_config(path)
