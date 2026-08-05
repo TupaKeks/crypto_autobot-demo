@@ -26,6 +26,11 @@ MT5-заявку, читает закрытые бары через `copy_rates_
 серверный `order_check`. Для market-заявок адаптер переводит битовые флаги
 `SYMBOL_FILLING_MODE` в конкретный FOK/IOC/RETURN, вместо передачи флагов как типа заявки.
 
+`--discover-mt5-symbols` читает каталог инструментов терминала через
+`symbols_get`, предлагает `symbol_map` и не вызывает ни `order_check`, ни
+`order_send`. Проверенный список Demo-брокеров и порядок подключения:
+[`research/mt5_broker_shortlist_2026-08.md`](research/mt5_broker_shortlist_2026-08.md).
+
 ## GitHub CI
 
 Workflow `.github/workflows/crypto-autobot-demo.yml` запускает тесты и публикует

@@ -28,6 +28,18 @@ def _floor_step(value: float, step: float, minimum: float, maximum: float) -> fl
     return min(maximum, max(minimum, rounded))
 
 
+def _normalized_symbol(value: str) -> str:
+    return "".join(character for character in value.upper() if character.isalnum())
+
+
+def _internal_base(symbol: str) -> str:
+    normalized = _normalized_symbol(symbol)
+    for quote in ("USDT", "USDC", "USD"):
+        if normalized.endswith(quote) and len(normalized) > len(quote):
+            return normalized[: -len(quote)]
+    return normalized
+
+
 class MT5Broker:
     """Thin exchange-neutral wrapper around the official MetaTrader5 package."""
 
@@ -263,6 +275,130 @@ class MT5Broker:
             "positions": self.get_open_positions(),
             "position_mode": "hedging" if bool(item.get("margin_mode") == 2) else "netting",
             "orders_enabled": self.orders_enabled,
+        }
+
+    def discovery_snapshot(self, symbols: list[str]) -> dict[str, Any]:
+        """Suggest broker symbol mappings without checking or sending orders."""
+        symbols_get = getattr(self.mt5, "symbols_get", None)
+        if not callable(symbols_get):
+            raise RuntimeError("MT5 module does not provide symbols_get().")
+        raw_symbols = symbols_get()
+        if raw_symbols is None:
+            raise RuntimeError(f"MT5 symbols_get failed: {self.mt5.last_error()}")
+
+        requested = [str(symbol).upper() for symbol in symbols]
+        requested_bases = {_internal_base(symbol) for symbol in requested}
+        available: list[dict[str, Any]] = []
+        for raw in raw_symbols:
+            item = _asdict(raw)
+            name = str(item.get("name", "")).strip()
+            if not name:
+                continue
+            normalized = _normalized_symbol(name)
+            base = _normalized_symbol(str(item.get("currency_base", "")))
+            profit = _normalized_symbol(str(item.get("currency_profit", "")))
+            searchable = " ".join(
+                str(item.get(field, "")).lower()
+                for field in ("path", "description", "category")
+            )
+            relevant_base = base in requested_bases or any(
+                normalized.startswith(candidate) for candidate in requested_bases
+            )
+            looks_crypto = any(token in searchable for token in ("crypto", "digital", "coin"))
+            if not looks_crypto and not relevant_base:
+                continue
+            available.append(
+                {
+                    "name": name,
+                    "normalized": normalized,
+                    "currency_base": base,
+                    "currency_profit": profit,
+                    "path": str(item.get("path", "")),
+                    "description": str(item.get("description", "")),
+                    "visible": bool(item.get("visible", False)),
+                    "trade_mode": item.get("trade_mode"),
+                    "order_mode": item.get("order_mode"),
+                }
+            )
+
+        suggestions: list[dict[str, Any]] = []
+        recommended_map: dict[str, str] = {}
+        for internal_symbol in requested:
+            base = _internal_base(internal_symbol)
+            internal_normalized = _normalized_symbol(internal_symbol)
+            scored: list[tuple[int, str, dict[str, Any]]] = []
+            for candidate in available:
+                candidate_name = str(candidate["name"])
+                normalized = str(candidate["normalized"])
+                candidate_base = str(candidate["currency_base"])
+                profit = str(candidate["currency_profit"])
+                score = 0
+                if normalized == internal_normalized:
+                    score = 120
+                elif normalized in (f"{base}USD", f"{base}USDT", f"{base}USDC"):
+                    score = 115
+                elif candidate_base == base and profit in ("USD", "USDT", "USDC"):
+                    score = 110
+                elif any(
+                    normalized.startswith(f"{base}{quote}")
+                    for quote in ("USD", "USDT", "USDC")
+                ):
+                    score = 100
+                elif candidate_base == base or normalized.startswith(base):
+                    score = 80
+                if score:
+                    scored.append((score, candidate_name, candidate))
+            scored.sort(key=lambda value: (-value[0], value[1]))
+            top = scored[:5]
+            unambiguous = bool(top) and top[0][0] >= 100 and (
+                len(top) == 1 or top[0][0] > top[1][0]
+            )
+            if unambiguous:
+                recommended_map[internal_symbol] = top[0][1]
+            suggestions.append(
+                {
+                    "symbol": internal_symbol,
+                    "recommended": top[0][1] if unambiguous else None,
+                    "ambiguous": bool(top) and not unambiguous,
+                    "candidates": [
+                        {
+                            "broker_symbol": candidate[1],
+                            "score": candidate[0],
+                            "currency_base": candidate[2]["currency_base"],
+                            "currency_profit": candidate[2]["currency_profit"],
+                            "path": candidate[2]["path"],
+                            "description": candidate[2]["description"],
+                        }
+                        for candidate in top
+                    ],
+                }
+            )
+
+        return {
+            "ready": len(recommended_map) == len(requested),
+            "orders_sent": 0,
+            "requested_symbols": requested,
+            "recommended_symbol_map": recommended_map,
+            "missing_or_ambiguous": [
+                item["symbol"] for item in suggestions if not item["recommended"]
+            ],
+            "suggestions": suggestions,
+            "available_crypto_symbols": [
+                {
+                    key: item[key]
+                    for key in (
+                        "name",
+                        "currency_base",
+                        "currency_profit",
+                        "path",
+                        "description",
+                        "visible",
+                        "trade_mode",
+                        "order_mode",
+                    )
+                }
+                for item in sorted(available, key=lambda value: str(value["name"]))
+            ],
         }
 
     def readiness_snapshot(self, symbols: list[str]) -> dict[str, Any]:

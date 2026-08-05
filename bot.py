@@ -2256,6 +2256,18 @@ def broker_readiness_snapshot(ctx: BotContext) -> dict[str, Any]:
     }
 
 
+def mt5_symbol_discovery_snapshot(ctx: BotContext) -> dict[str, Any]:
+    if broker_provider(ctx) != "mt5" or ctx.broker is None:
+        raise ValueError("MT5 symbol discovery requires an MT5 Demo or Live profile.")
+    discover = getattr(ctx.broker, "discovery_snapshot", None)
+    if not callable(discover):
+        raise RuntimeError("Configured MT5 broker does not support symbol discovery.")
+    configured_symbols = [
+        str(symbol).upper() for symbol in ctx.config["market"]["symbols"]
+    ]
+    return discover(configured_symbols)
+
+
 def stats_from_state(state: dict[str, Any]) -> dict[str, Any]:
     trades = [t for t in state.get("trades", []) if t.get("event") == "close"]
     wins = [t for t in trades if float(t.get("pnl", 0)) > 0]
@@ -3509,6 +3521,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="check broker, market data and MT5 order parameters without placing orders",
     )
+    parser.add_argument(
+        "--discover-mt5-symbols",
+        action="store_true",
+        help="list MT5 crypto symbols and suggest symbol_map without placing orders",
+    )
     parser.add_argument("--enable-orders", action="store_true", help="allow broker order placement")
     parser.add_argument(
         "--allow-live-ui",
@@ -3532,6 +3549,10 @@ def main() -> int:
     )
     ensure_trades_file(ctx)
     state = ensure_state(ctx)
+    if args.discover_mt5_symbols:
+        discovery = mt5_symbol_discovery_snapshot(ctx)
+        print(json.dumps(discovery, indent=2))
+        return 0 if discovery["ready"] else 1
     if args.check:
         readiness = broker_readiness_snapshot(ctx)
         print(json.dumps(readiness, indent=2))

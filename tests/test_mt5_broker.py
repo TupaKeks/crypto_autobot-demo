@@ -66,6 +66,38 @@ class FakeMT5:
         self.rates = []
         self.rate_requests = []
         self.order_checks = []
+        self.available_symbols = [
+            SimpleNamespace(
+                name="BTCUSD.a",
+                currency_base="BTC",
+                currency_profit="USD",
+                path="Crypto\\Majors",
+                description="Bitcoin vs US Dollar",
+                visible=False,
+                trade_mode=self.SYMBOL_TRADE_MODE_FULL,
+                order_mode=self.symbol_order_mode,
+            ),
+            SimpleNamespace(
+                name="ETHUSD",
+                currency_base="ETH",
+                currency_profit="USD",
+                path="Cryptocurrencies",
+                description="Ethereum vs US Dollar",
+                visible=True,
+                trade_mode=self.SYMBOL_TRADE_MODE_FULL,
+                order_mode=self.symbol_order_mode,
+            ),
+            SimpleNamespace(
+                name="EURUSD",
+                currency_base="EUR",
+                currency_profit="USD",
+                path="Forex\\Majors",
+                description="Euro vs US Dollar",
+                visible=True,
+                trade_mode=self.SYMBOL_TRADE_MODE_FULL,
+                order_mode=self.symbol_order_mode,
+            ),
+        ]
 
     def initialize(self, *args, **kwargs):
         return True
@@ -117,6 +149,9 @@ class FakeMT5:
 
     def symbol_select(self, symbol, enabled):
         return True
+
+    def symbols_get(self):
+        return tuple(self.available_symbols)
 
     def symbol_info_tick(self, symbol):
         return SimpleNamespace(ask=100.0, bid=99.9)
@@ -291,6 +326,23 @@ class MT5BrokerTests(unittest.TestCase):
             self.mt5.order_checks[0]["type_filling"],
             self.mt5.ORDER_FILLING_FOK,
         )
+
+    def test_discovery_suggests_crypto_mapping_without_order_checks_or_orders(self):
+        result = self.broker.discovery_snapshot(["BTCUSDT", "ETHUSDT", "SOLUSDT"])
+
+        self.assertFalse(result["ready"])
+        self.assertEqual(
+            result["recommended_symbol_map"],
+            {"BTCUSDT": "BTCUSD.a", "ETHUSDT": "ETHUSD"},
+        )
+        self.assertEqual(result["missing_or_ambiguous"], ["SOLUSDT"])
+        self.assertEqual(
+            [item["name"] for item in result["available_crypto_symbols"]],
+            ["BTCUSD.a", "ETHUSD"],
+        )
+        self.assertEqual(result["orders_sent"], 0)
+        self.assertEqual(self.mt5.order_checks, [])
+        self.assertEqual(self.mt5.requests, [])
 
     def test_readiness_rejects_disabled_terminal_trading(self):
         self.mt5.terminal_trade_allowed = False

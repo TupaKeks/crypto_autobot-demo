@@ -463,6 +463,11 @@ MT5-профиль запускается отдельно, а его стати
 конкретного MT5-брокера и в `config.mt5-demo.asymmetric-15m.example.json` замени
 `symbol_map` на точные названия криптосимволов этого брокера.
 
+Актуальный технический shortlist для Польши/ЕС находится в
+`research/mt5_broker_shortlist_2026-08.md`. Первый кандидат для проверки -
+IC Markets EU; Pepperstone EU и Admirals остаются резервными. Это выбор
+среды Demo-теста, а не рекомендация вносить деньги.
+
 Логин, пароль и сервер не записываются в JSON. Перед запуском задай их в окружении:
 
 ```bash
@@ -470,6 +475,19 @@ export MT5_LOGIN="НОМЕР_DEMO_СЧЁТА"
 export MT5_PASSWORD="ПАРОЛЬ_DEMO_СЧЁТА"
 export MT5_SERVER="ТОЧНОЕ_ИМЯ_DEMO_СЕРВЕРА"
 ```
+
+Сначала получи каталог криптосимволов и предлагаемый `symbol_map`:
+
+```bash
+python crypto_autobot/bot.py \
+  --config crypto_autobot/config.mt5-demo.asymmetric-15m.example.json \
+  --discover-mt5-symbols
+```
+
+Этот режим вызывает только `symbols_get`: не вызывает `order_check` и
+`order_send`, не меняет счёт. Скопируй в конфиг только однозначные
+строки из `recommended_symbol_map`. Пустые или спорные символы проверь в
+Market Watch -> Specification; не угадывай суффикс брокера.
 
 На Windows-машине с установленным и запущенным терминалом MT5 сначала проверь
 подключение без ордеров:
@@ -506,6 +524,9 @@ python crypto_autobot/bot.py \
 запущенным терминалом MetaTrader 5. Фоновый запуск настраивается там через
 Task Scheduler или менеджер Windows-служб. `install_macos_demo_service.command`
 относится только к Binance Demo и MT5 не устанавливает.
+На 5 августа 2026 официальный пакет `MetaTrader5` на PyPI публикует только
+Windows x86-64 wheels. Наличие MT5-интерфейса для macOS у брокера не делает
+официальный Python API нативно совместимым с Mac.
 
 По официальной схеме MetaQuotes Python-модуль подключается к работающему терминалу через
 [`initialize`](https://www.mql5.com/en/docs/python_metatrader5/mt5initialize_py), а заявки отправляются через
