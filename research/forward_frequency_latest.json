@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-08-05T00:24:30+00:00",
+  "period_end": "2026-08-05T00:15:00+00:00",
+  "symbols": [
+    "AAVEUSDT",
+    "ADAUSDT",
+    "APTUSDT",
+    "CRVUSDT",
+    "ETHUSDT",
+    "FILUSDT",
+    "NEARUSDT",
+    "RENDERUSDT",
+    "TAOUSDT",
+    "XLMUSDT"
+  ],
+  "strategy": "asymmetric 15m regime pullback",
+  "periods": {
+    "production": {
+      "2d": {
+        "trades": 11,
+        "trades_per_day": 5.5,
+        "win_rate": 27.27,
+        "profit_factor": 0.164,
+        "return_percent": -0.57,
+        "max_drawdown_percent": 0.61
+      },
+      "3d": {
+        "trades": 14,
+        "trades_per_day": 4.67,
+        "win_rate": 28.57,
+        "profit_factor": 0.194,
+        "return_percent": -0.62,
+        "max_drawdown_percent": 0.66
+      },
+      "7d": {
+        "trades": 32,
+        "trades_per_day": 4.57,
+        "win_rate": 40.62,
+        "profit_factor": 1.024,
+        "return_percent": 0.03,
+        "max_drawdown_percent": 0.66
+      }
+    },
+    "demo": {
+      "2d": {
+        "trades": 7,
+        "trades_per_day": 3.5,
+        "win_rate": 28.57,
+        "profit_factor": 0.173,
+        "return_percent": -0.35,
+        "max_drawdown_percent": 0.37
+      },
+      "3d": {
+        "trades": 9,
+        "trades_per_day": 3.0,
+        "win_rate": 22.22,
+        "profit_factor": 0.118,
+        "return_percent": -0.55,
+        "max_drawdown_percent": 0.57
+      },
+      "7d": {
+        "trades": 24,
+        "trades_per_day": 3.43,
+        "win_rate": 33.33,
+        "profit_factor": 0.538,
+        "return_percent": -0.55,
+        "max_drawdown_percent": 0.84
+      }
+    }
+  },
+  "environment_divergence": {
+    "mean_absolute_close_divergence_bps": 6.526,
+    "observations": 8480,
+    "by_symbol_bps": {
+      "AAVEUSDT": 13.467,
+      "ADAUSDT": 12.508,
+      "APTUSDT": 6.224,
+      "CRVUSDT": 2.783,
+      "ETHUSDT": 7.275,
+      "FILUSDT": 4.152,
+      "NEARUSDT": 5.081,
+      "RENDERUSDT": 3.289,
+      "TAOUSDT": 5.73,
+      "XLMUSDT": 4.748
+    }
+  },
+  "warning": "Short recent samples are diagnostic and do not establish profitability."
+}

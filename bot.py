@@ -128,6 +128,81 @@ def today_key(timezone: ZoneInfo) -> str:
     return dt.datetime.now(timezone).date().isoformat()
 
 
+def execution_diagnostics(state: dict[str, Any], timezone: ZoneInfo) -> dict[str, Any]:
+    diagnostics = state.get("execution_diagnostics")
+    if diagnostics is not None:
+        return diagnostics
+
+    logs = state.get("logs", [])
+    diagnostics = {
+        "started_at": state.get("created_at") or now_iso(timezone),
+        "candles_observed": 0,
+        "status_counts": {},
+        "signal_orders": sum(
+            ": placed " in str(item.get("message", ""))
+            and " limit on " in str(item.get("message", ""))
+            for item in logs
+        ),
+        "market_entries": 0,
+        "limit_fills": 0,
+        "limit_expired": sum(
+            "limit entry expired" in str(item.get("message", "")).lower()
+            for item in logs
+        ),
+        "limit_canceled": 0,
+        "last_candle_by_symbol": {},
+    }
+    state["execution_diagnostics"] = diagnostics
+    return diagnostics
+
+
+def diagnostic_status_bucket(status: str) -> str:
+    value = status.strip().lower()
+    if value.startswith("placed "):
+        return "signal_order"
+    if value.startswith("opened "):
+        return "market_entry"
+    if "limit pending" in value:
+        return "limit_pending"
+    if value.startswith("limit filled") or value == "position open":
+        return "position_open"
+    if "stale market data" in value:
+        return "stale_data"
+    if "error" in value:
+        return "error"
+    if "filter" in value or value in {
+        "no signal",
+        "outside baseline universe",
+        "strategy disabled",
+        "latest candle already processed",
+    }:
+        return "no_signal"
+    return "other"
+
+
+def record_scan_diagnostic(
+    state: dict[str, Any],
+    result: dict[str, Any],
+    timezone: ZoneInfo,
+) -> None:
+    symbol = str(result.get("symbol", "")).upper()
+    candle_open_time = result.get("candle_open_time")
+    if not symbol or candle_open_time is None:
+        return
+
+    diagnostics = execution_diagnostics(state, timezone)
+    candle_key = str(int(candle_open_time))
+    last_candles = diagnostics.setdefault("last_candle_by_symbol", {})
+    if last_candles.get(symbol) == candle_key:
+        return
+
+    last_candles[symbol] = candle_key
+    diagnostics["candles_observed"] = int(diagnostics.get("candles_observed", 0)) + 1
+    bucket = diagnostic_status_bucket(str(result.get("status", "")))
+    counts = diagnostics.setdefault("status_counts", {})
+    counts[bucket] = int(counts.get(bucket, 0)) + 1
+
+
 def ensure_state(ctx: BotContext) -> dict[str, Any]:
     ctx.state_path.parent.mkdir(parents=True, exist_ok=True)
     if ctx.state_path.exists():
@@ -157,6 +232,17 @@ def ensure_state(ctx: BotContext) -> dict[str, Any]:
         "seen_signal_candles": {},
         "latest": {},
         "logs": [],
+        "execution_diagnostics": {
+            "started_at": now_iso(ctx.timezone),
+            "candles_observed": 0,
+            "status_counts": {},
+            "signal_orders": 0,
+            "market_entries": 0,
+            "limit_fills": 0,
+            "limit_expired": 0,
+            "limit_canceled": 0,
+            "last_candle_by_symbol": {},
+        },
         "runtime": {
             "scan_sequence": 0,
             "scan_in_progress": False,
@@ -815,6 +901,8 @@ def place_pending_entry(
         "entry_client_order_id": broker_result.get("entry_client_order_id") if broker_result else None,
         "placed_at": now_iso(ctx.timezone),
     }
+    diagnostics = execution_diagnostics(state, ctx.timezone)
+    diagnostics["signal_orders"] = int(diagnostics.get("signal_orders", 0)) + 1
     destination = broker_name(ctx) if ctx.broker else "paper"
     log_event(state, f"{symbol}: placed {side} limit on {destination} at {limit_price:.6g}", ctx.timezone)
     write_state(ctx, state)
@@ -837,16 +925,25 @@ def reconcile_pending_entry(
         client_order_id = str(pending["entry_client_order_id"])
         order = ctx.broker.get_entry_order(symbol, client_order_id)
         status = str(order.get("status", "UNKNOWN")).upper()
-        if status != "FILLED" and latest.open_time >= int(pending["expiry_open_time"]):
+        # A signal is known only after its candle closes. At expiry_open_time the
+        # live limit has just entered its one eligible retrace candle; cancel it
+        # only when the following candle begins. Paper reconciliation sees the
+        # completed eligible candle and can expire at equality below.
+        if status != "FILLED" and latest.open_time > int(pending["expiry_open_time"]):
             order = ctx.broker.cancel_entry_order(symbol, client_order_id)
             status = str(order.get("status", "UNKNOWN")).upper()
             if status != "FILLED":
                 state["pending_entries"].pop(symbol, None)
+                diagnostics = execution_diagnostics(state, ctx.timezone)
+                diagnostics["limit_expired"] = int(diagnostics.get("limit_expired", 0)) + 1
                 log_event(state, f"{symbol}: limit entry expired ({status})", ctx.timezone)
                 return "limit entry expired"
         if status != "FILLED":
             if status in {"CANCELED", "EXPIRED", "REJECTED"}:
                 state["pending_entries"].pop(symbol, None)
+                diagnostics = execution_diagnostics(state, ctx.timezone)
+                diagnostics["limit_canceled"] = int(diagnostics.get("limit_canceled", 0)) + 1
+                log_event(state, f"{symbol}: limit entry {status.lower()}", ctx.timezone)
                 return f"limit entry {status.lower()}"
             return f"limit pending at {float(pending['limit_price']):.6g}"
         broker_result = ctx.broker.activate_limit_entry(
@@ -871,11 +968,15 @@ def reconcile_pending_entry(
         else:
             if latest.open_time >= int(pending["expiry_open_time"]):
                 state["pending_entries"].pop(symbol, None)
+                diagnostics = execution_diagnostics(state, ctx.timezone)
+                diagnostics["limit_expired"] = int(diagnostics.get("limit_expired", 0)) + 1
                 log_event(state, f"{symbol}: paper limit entry expired", ctx.timezone)
                 return "limit entry expired"
             return f"limit pending at {limit_price:.6g}"
 
     state["pending_entries"].pop(symbol, None)
+    diagnostics = execution_diagnostics(state, ctx.timezone)
+    diagnostics["limit_fills"] = int(diagnostics.get("limit_fills", 0)) + 1
     open_position(
         ctx,
         state,
@@ -1170,7 +1271,12 @@ def scan_symbol(
             int(strategy["atr_length"]),
         )
     if len(candles) < min_needed:
-        return {"symbol": symbol, "status": "not enough candles", "candles": len(candles)}
+        return {
+            "symbol": symbol,
+            "status": "not enough candles",
+            "candles": len(candles),
+            "candle_open_time": candles[-1].open_time if candles else None,
+        }
     interval = str(market["interval"])
     max_age_intervals = float(market.get("max_candle_age_intervals", 2.0))
     if not market_data_is_fresh(candles[-1], interval, max_age_intervals):
@@ -1178,6 +1284,7 @@ def scan_symbol(
             "symbol": symbol,
             "time": candles[-1].open_dt,
             "price": candles[-1].close,
+            "candle_open_time": candles[-1].open_time,
             "data_source": broker_name(ctx) if broker_provider(ctx) == "mt5" else "Binance",
             "status": "stale market data; trading blocked",
         }
@@ -1209,6 +1316,7 @@ def scan_symbol(
         "symbol": symbol,
         "time": candle.open_dt,
         "price": candle.close,
+        "candle_open_time": candle.open_time,
         "data_source": broker_name(ctx) if broker_provider(ctx) == "mt5" else "Binance",
         "fast_ema": fast[i],
         "slow_ema": slow[i],
@@ -1318,7 +1426,12 @@ def scan_symbol(
         latest["status"] = f"placed {side} limit"
     else:
         open_position(ctx, state, symbol, side, candle, atr_value, reason, trade_profile=trade_profile)
-        latest["status"] = f"opened {side}"
+        if symbol in state.get("positions", {}):
+            diagnostics = execution_diagnostics(state, ctx.timezone)
+            diagnostics["market_entries"] = int(diagnostics.get("market_entries", 0)) + 1
+            latest["status"] = f"opened {side}"
+        else:
+            latest["status"] = "market entry rejected"
     latest["signal_source"] = signal_source
     state["seen_signal_candles"][symbol] = seen_key
 
@@ -1393,6 +1506,7 @@ def scan_once(ctx: BotContext) -> dict[str, Any]:
                     candles,
                 )
                 results.append(result)
+                record_scan_diagnostic(state, result, ctx.timezone)
                 state.setdefault("latest", {})[symbol] = result
                 write_state(ctx, state)
         except Exception as exc:  # noqa: BLE001
@@ -1786,6 +1900,13 @@ def public_state(ctx: BotContext, state: dict[str, Any]) -> dict[str, Any]:
 
     stats = stats_from_state(state)
     stats["open_positions"] = len(displayed_positions)
+    diagnostics = dict(execution_diagnostics(state, ctx.timezone))
+    signal_orders = int(diagnostics.get("signal_orders", 0))
+    diagnostics["fill_rate_percent"] = round(
+        int(diagnostics.get("limit_fills", 0)) / signal_orders * 100,
+        2,
+    ) if signal_orders else 0.0
+    diagnostics.pop("last_candle_by_symbol", None)
     result = {
         "updated_at": state.get("updated_at"),
         "mode": ctx.mode,
@@ -1817,6 +1938,7 @@ def public_state(ctx: BotContext, state: dict[str, Any]) -> dict[str, Any]:
         "broker_status": state.get("broker_status", {}),
         "health": health_snapshot(ctx, state)[0],
         "stats": stats,
+        "execution_diagnostics": diagnostics,
         "equity_now": round(float(state.get("balance", 0.0)) + open_pnl, 2),
         "positions": displayed_positions,
         "pending_entries": state.get("pending_entries", {}),
@@ -2189,6 +2311,13 @@ def dashboard_html(app_name: str) -> str:
         </table></div>
       </section>
       <section>
+        <h2>Исполнение сигналов</h2>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Закрытых свечей</th><th>Заявок</th><th>Исполнено</th><th>Истекло</th><th>Отменено</th><th>Fill rate</th></tr></thead>
+          <tbody id="executionRows"></tbody>
+        </table></div>
+      </section>
+      <section>
         <h2>Позиции</h2>
         <div class="tablewrap"><table>
           <thead><tr><th>Пара</th><th>Сторона</th><th>Вход</th><th>Стоп</th><th>Тейк</th><th>Открытый PnL</th></tr></thead>
@@ -2312,6 +2441,15 @@ async function loadState() {{
   document.getElementById('validationRows').innerHTML = validationChecks.length
     ? validationChecks.map(item => `<tr><td>${{esc(item.label)}}</td><td>${{esc(item.display_value || item.value)}}</td><td>${{esc(item.target)}}</td><td class="${{item.passed ? 'green' : 'red'}}">${{item.passed ? 'OK' : 'ЖДЁМ'}}</td></tr>`).join('')
     : emptyRow(4, 'Demo-метрики недоступны');
+
+  const execution = data.execution_diagnostics || {{}};
+  document.getElementById('executionRows').innerHTML = `<tr>` +
+    `<td>${{money(execution.candles_observed)}}</td>` +
+    `<td>${{money(execution.signal_orders)}}</td>` +
+    `<td>${{money(execution.limit_fills)}}</td>` +
+    `<td>${{money(execution.limit_expired)}}</td>` +
+    `<td>${{money(execution.limit_canceled)}}</td>` +
+    `<td>${{money(execution.fill_rate_percent)}}%</td></tr>`;
 
   const latest = Object.values(data.latest || {{}});
   document.getElementById('latestRows').innerHTML = latest.length

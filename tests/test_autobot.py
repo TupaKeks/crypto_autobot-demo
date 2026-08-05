@@ -40,6 +40,7 @@ from crypto_autobot.bot import (
     open_demo_test_order,
     place_pending_entry,
     public_state,
+    record_scan_diagnostic,
     reconcile_pending_entry,
     scan_once,
     write_state,
@@ -559,6 +560,73 @@ class HealthSnapshotTests(unittest.TestCase):
 
 
 class BotModeTests(unittest.TestCase):
+    def test_execution_diagnostics_count_each_symbol_candle_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = BotContext(
+                config=mode_config(tmp, "paper"),
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            first = {
+                "symbol": "BTCUSDT",
+                "candle_open_time": 900_000,
+                "status": "ADX filter: 14.6",
+            }
+            signal = {
+                "symbol": "BTCUSDT",
+                "candle_open_time": 1_800_000,
+                "status": "placed short limit",
+            }
+
+            record_scan_diagnostic(state, first, ctx.timezone)
+            record_scan_diagnostic(state, first, ctx.timezone)
+            record_scan_diagnostic(state, signal, ctx.timezone)
+
+            diagnostics = state["execution_diagnostics"]
+            self.assertEqual(diagnostics["candles_observed"], 2)
+            self.assertEqual(diagnostics["status_counts"], {"no_signal": 1, "signal_order": 1})
+
+    def test_limit_lifecycle_updates_execution_diagnostics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["market"]["interval"] = "15m"
+            config["strategy"].update(
+                {"entry_order_type": "limit_retrace", "entry_offset_atr": 0.1, "entry_expiry_bars": 1}
+            )
+            broker = FakeBroker()
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            ensure_trades_file(ctx)
+            signal = Candle(0, 99, 101, 98, 100, 10, 899_999)
+            eligible = Candle(900_000, 100, 101, 99, 100, 10, 1_799_999)
+
+            place_pending_entry(ctx, state, "BTCUSDT", "long", signal, 2.0, "test")
+            reconcile_pending_entry(ctx, state, "BTCUSDT", [signal, eligible])
+
+            diagnostics = state["execution_diagnostics"]
+            self.assertEqual(diagnostics["signal_orders"], 1)
+            self.assertEqual(diagnostics["limit_fills"], 1)
+            self.assertEqual(diagnostics["limit_expired"], 0)
+
     def test_slow_account_refresh_does_not_block_protection_watchdog(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = mode_config(tmp, "demo")
@@ -812,6 +880,58 @@ class BotModeTests(unittest.TestCase):
             self.assertEqual(state["positions"]["BTCUSDT"]["stop"], 95.8)
             self.assertEqual(state["positions"]["BTCUSDT"]["target"], 105.8)
             self.assertEqual(len(broker.activation_calls), 1)
+
+    def test_live_limit_keeps_its_full_retrace_candle_before_expiry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["market"]["interval"] = "15m"
+            broker = FakeBroker()
+            broker.order_status = "NEW"
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            state["pending_entries"]["APTUSDT"] = {
+                "symbol": "APTUSDT",
+                "side": "long",
+                "limit_price": 0.5742,
+                "stop_distance": 0.004,
+                "target_distance": 0.006,
+                "signal_candle_time": 0,
+                "expiry_open_time": 900_000,
+                "atr": 0.002,
+                "reason": "APT regression",
+                "trade_profile": {},
+                "entry_client_order_id": "autobot-limit-apt",
+            }
+
+            eligible_open = Candle(
+                900_000, 0.575, 0.576, 0.575, 0.5755, 1, 1_799_999
+            )
+            status = reconcile_pending_entry(ctx, state, "APTUSDT", [eligible_open])
+
+            self.assertEqual(status, "limit pending at 0.5742")
+            self.assertIn("APTUSDT", state["pending_entries"])
+            self.assertEqual(broker.order_status, "NEW")
+
+            following_open = Candle(
+                1_800_000, 0.576, 0.577, 0.575, 0.576, 1, 2_699_999
+            )
+            status = reconcile_pending_entry(ctx, state, "APTUSDT", [following_open])
+
+            self.assertEqual(status, "limit entry expired")
+            self.assertNotIn("APTUSDT", state["pending_entries"])
+            self.assertEqual(broker.order_status, "CANCELED")
+            self.assertEqual(state["execution_diagnostics"]["limit_expired"], 1)
 
     def test_watchdog_position_snapshot_skips_full_account_refresh(self):
         with tempfile.TemporaryDirectory() as tmp:
