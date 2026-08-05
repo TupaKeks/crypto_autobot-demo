@@ -592,6 +592,8 @@ class BinanceFuturesBroker:
             raise ValueError("Maximum number of Binance positions reached.")
         if limit_price <= 0 or stop_distance <= 0 or target_distance <= 0:
             raise ValueError("Limit price, stop distance and target distance must be positive.")
+        if side not in ("long", "short"):
+            raise ValueError("Side must be long or short.")
 
         self.cancel_protection(symbol)
         self.set_symbol_risk(symbol)
@@ -603,7 +605,7 @@ class BinanceFuturesBroker:
 
         rules = self.symbol_rules(symbol)
         raw_price = Decimal(str(limit_price))
-        price = price_to_tick(raw_price, rules.price_tick, "down" if side == "long" else "up")
+        price = self.post_only_limit_price(symbol, side, raw_price, rules.price_tick)
         risk_cash = wallet_balance * Decimal(str(risk_percent)) / Decimal("100")
         quantity = risk_cash / Decimal(str(stop_distance))
         margin_cap_notional = available_balance * Decimal(str(self.leverage)) * Decimal("0.95")
@@ -620,27 +622,43 @@ class BinanceFuturesBroker:
                 f"{self.quote_asset}."
             )
 
-        client_order_id = f"autobot-limit-{uuid.uuid4().hex[:18]}"
-        params = {
-            "symbol": symbol,
-            "side": "BUY" if side == "long" else "SELL",
-            "type": "LIMIT",
-            "timeInForce": "GTX",
-            "quantity": decimal_text(quantity),
-            "price": decimal_text(price),
-            "newOrderRespType": "ACK",
-            "newClientOrderId": client_order_id,
-        }
+        def submit(order_price: Decimal) -> tuple[dict[str, Any], str]:
+            client_id = f"autobot-limit-{uuid.uuid4().hex[:18]}"
+            params = {
+                "symbol": symbol,
+                "side": "BUY" if side == "long" else "SELL",
+                "type": "LIMIT",
+                "timeInForce": "GTX",
+                "quantity": decimal_text(quantity),
+                "price": decimal_text(order_price),
+                "newOrderRespType": "ACK",
+                "newClientOrderId": client_id,
+            }
+            try:
+                response = self.signed("POST", "/fapi/v1/order", params)
+            except BinanceAPIError as exc:
+                if exc.status != 503:
+                    raise
+                response = self.signed(
+                    "GET",
+                    "/fapi/v1/order",
+                    {"symbol": symbol, "origClientOrderId": client_id},
+                )
+            return dict(response), client_id
+
         try:
-            order = self.signed("POST", "/fapi/v1/order", params)
+            order, client_order_id = submit(price)
         except BinanceAPIError as exc:
-            if exc.status != 503:
+            if exc.code != -5022:
                 raise
-            order = self.signed(
-                "GET",
-                "/fapi/v1/order",
-                {"symbol": symbol, "origClientOrderId": client_order_id},
+            price = self.post_only_limit_price(
+                symbol,
+                side,
+                raw_price,
+                rules.price_tick,
+                safety_ticks=1,
             )
+            order, client_order_id = submit(price)
         return {
             "symbol": symbol,
             "side": side,
@@ -654,6 +672,37 @@ class BinanceFuturesBroker:
             "target_distance": target_distance,
             "placed_at_ms": int(time.time() * 1000),
         }
+
+    def post_only_limit_price(
+        self,
+        symbol: str,
+        side: str,
+        requested_price: Decimal,
+        price_tick: Decimal,
+        *,
+        safety_ticks: int = 0,
+    ) -> Decimal:
+        book = self.public(
+            "GET",
+            "/fapi/v1/ticker/bookTicker",
+            {"symbol": symbol},
+        )
+        bid = Decimal(str(book.get("bidPrice", "0")))
+        ask = Decimal(str(book.get("askPrice", "0")))
+        if bid <= 0 or ask <= 0 or bid >= ask:
+            raise ValueError(f"Invalid Binance order book for {symbol}.")
+        safety = price_tick * max(0, int(safety_ticks))
+        if side == "long":
+            candidate = min(requested_price, bid - safety)
+            price = price_to_tick(candidate, price_tick, "down")
+        elif side == "short":
+            candidate = max(requested_price, ask + safety)
+            price = price_to_tick(candidate, price_tick, "up")
+        else:
+            raise ValueError("Side must be long or short.")
+        if price <= 0:
+            raise ValueError(f"Calculated post-only price for {symbol} is invalid.")
+        return price
 
     def get_entry_order(self, symbol: str, client_order_id: str) -> dict[str, Any]:
         return dict(

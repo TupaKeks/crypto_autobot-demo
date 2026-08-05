@@ -8,7 +8,7 @@
     "data_dir": "crypto_autobot/data/intraday"
   },
   "market": {
-    "base_url": "https://demo-fapi.binance.com",
+    "base_url": "https://fapi.binance.com",
     "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"],
     "interval": "5m",
     "history_limit": 1000

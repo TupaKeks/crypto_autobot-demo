@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import json
 import tempfile
@@ -30,6 +31,7 @@ from crypto_autobot.bot import (
     broker_readiness_snapshot,
     build_context,
     close_position,
+    ensure_validation_daily_history,
     ensure_state,
     ensure_trades_file,
     fetch_klines,
@@ -319,6 +321,10 @@ class BinanceBrokerTests(unittest.TestCase):
             price_tick=Decimal("0.1"),
             min_notional=Decimal("5"),
         )
+        broker.public = lambda *_args, **_kwargs: {
+            "bidPrice": "100.0",
+            "askPrice": "100.1",
+        }
 
         def signed(method, path, params=None):
             captured.update({"method": method, "path": path, "params": params})
@@ -338,6 +344,109 @@ class BinanceBrokerTests(unittest.TestCase):
         self.assertEqual(captured["params"]["timeInForce"], "GTX")
         self.assertEqual(captured["params"]["price"], "99.8")
         self.assertEqual(result["entry_order_id"], 123)
+
+    def test_limit_entry_is_clamped_to_demo_order_book(self):
+        broker = BinanceFuturesBroker(
+            environment="demo",
+            api_key="key",
+            secret_key="secret",
+            orders_enabled=True,
+        )
+        broker.verify_one_way_mode = lambda: None
+        broker.get_open_position = lambda symbol: None
+        broker.get_open_positions = lambda: []
+        broker.cancel_protection = lambda symbol: None
+        broker.set_symbol_risk = lambda symbol: None
+        broker.get_balance = lambda: {"balance": "1000", "availableBalance": "1000"}
+        broker.symbol_rules = lambda symbol: SymbolRules(
+            quantity_step=Decimal("0.001"),
+            min_quantity=Decimal("0.001"),
+            max_quantity=Decimal("100"),
+            price_tick=Decimal("0.1"),
+            min_notional=Decimal("5"),
+        )
+        broker.public = lambda *_args, **_kwargs: {
+            "bidPrice": "99.94",
+            "askPrice": "100.06",
+        }
+        submitted = []
+        broker.signed = lambda method, path, params=None: (
+            submitted.append(dict(params or {})) or {"orderId": 123, "status": "NEW"}
+        )
+
+        long_result = broker.place_limit_entry(
+            symbol="BTCUSDT",
+            side="long",
+            limit_price=101.0,
+            stop_distance=4,
+            target_distance=6,
+            risk_percent=0.5,
+            max_open_positions=2,
+        )
+        short_result = broker.place_limit_entry(
+            symbol="BTCUSDT",
+            side="short",
+            limit_price=99.0,
+            stop_distance=4,
+            target_distance=6,
+            risk_percent=0.5,
+            max_open_positions=2,
+        )
+
+        self.assertEqual(submitted[0]["price"], "99.9")
+        self.assertEqual(submitted[1]["price"], "100.1")
+        self.assertEqual(long_result["limit_price"], "99.9")
+        self.assertEqual(short_result["limit_price"], "100.1")
+
+    def test_post_only_rejection_reprices_once_away_from_book(self):
+        broker = BinanceFuturesBroker(
+            environment="demo",
+            api_key="key",
+            secret_key="secret",
+            orders_enabled=True,
+        )
+        broker.verify_one_way_mode = lambda: None
+        broker.get_open_position = lambda symbol: None
+        broker.get_open_positions = lambda: []
+        broker.cancel_protection = lambda symbol: None
+        broker.set_symbol_risk = lambda symbol: None
+        broker.get_balance = lambda: {"balance": "1000", "availableBalance": "1000"}
+        broker.symbol_rules = lambda symbol: SymbolRules(
+            quantity_step=Decimal("0.001"),
+            min_quantity=Decimal("0.001"),
+            max_quantity=Decimal("100"),
+            price_tick=Decimal("0.1"),
+            min_notional=Decimal("5"),
+        )
+        broker.public = lambda *_args, **_kwargs: {
+            "bidPrice": "100.0",
+            "askPrice": "100.1",
+        }
+        submitted = []
+
+        def signed(method, path, params=None):
+            submitted.append(dict(params or {}))
+            if len(submitted) == 1:
+                raise BinanceAPIError(400, {"code": -5022, "msg": "Post Only order rejected"})
+            return {"orderId": 321, "status": "NEW"}
+
+        broker.signed = signed
+        result = broker.place_limit_entry(
+            symbol="BTCUSDT",
+            side="long",
+            limit_price=101.0,
+            stop_distance=4,
+            target_distance=6,
+            risk_percent=0.5,
+            max_open_positions=2,
+        )
+
+        self.assertEqual([item["price"] for item in submitted], ["100", "99.9"])
+        self.assertNotEqual(
+            submitted[0]["newClientOrderId"],
+            submitted[1]["newClientOrderId"],
+        )
+        self.assertEqual(result["entry_order_id"], 321)
 
     def test_quantity_and_price_rounding(self):
         self.assertEqual(floor_to_step(Decimal("1.239"), Decimal("0.01")), Decimal("1.23"))
@@ -806,15 +915,59 @@ class BotModeTests(unittest.TestCase):
                     },
                 ],
             }
-            ctx.state_path.write_text(json.dumps(legacy), encoding="utf-8")
+            ensure_validation_daily_history(legacy, ctx.timezone)
+            ensure_validation_daily_history(legacy, ctx.timezone)
 
-            migrated = ensure_state(ctx)
-            write_state(ctx, migrated)
-            reloaded = ensure_state(ctx)
+            self.assertEqual(legacy["validation_daily_version"], 1)
+            self.assertEqual(legacy["daily"]["2026-08-01"]["validation_pnls"], [3.0])
+            self.assertEqual(legacy["daily"]["2026-08-01"]["validation_closed"], 1)
 
-            self.assertEqual(reloaded["validation_daily_version"], 1)
-            self.assertEqual(reloaded["daily"]["2026-08-01"]["validation_pnls"], [3.0])
-            self.assertEqual(reloaded["daily"]["2026-08-01"]["validation_closed"], 1)
+    def test_validation_profile_change_resets_only_forward_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_demo.json",
+                trades_path=Path(tmp) / "trades_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=FakeBroker(),
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            original_hash = state["validation_profile_hash"]
+            state["balance"] = 1010.0
+            state["realized_pnl"] = 10.0
+            state["validation_coverage"] = {"2026-08-01": {"symbol_candles": 80}}
+            state["daily"] = {
+                "2026-08-01": {
+                    "trades": 2,
+                    "realized_pnl": 10.0,
+                    "validation_trades": 2,
+                    "validation_pnls": [12.0, -2.0],
+                    "validation_closed": 2,
+                }
+            }
+            write_state(ctx, state)
+
+            same_profile = ensure_state(ctx)
+            self.assertEqual(same_profile["validation_profile_hash"], original_hash)
+            self.assertEqual(same_profile["validation_coverage"]["2026-08-01"]["symbol_candles"], 80)
+
+            changed_config = mode_config(tmp, "demo")
+            changed_config["market"]["base_url"] = "https://demo-fapi.binance.com"
+            changed_ctx = dataclasses.replace(ctx, config=changed_config)
+            changed = ensure_state(changed_ctx)
+
+            self.assertNotEqual(changed["validation_profile_hash"], original_hash)
+            self.assertEqual(changed["validation_coverage"], {})
+            self.assertEqual(changed["daily"]["2026-08-01"]["validation_trades"], 0)
+            self.assertNotIn("validation_pnls", changed["daily"]["2026-08-01"])
+            self.assertEqual(changed["balance"], 1010.0)
+            self.assertEqual(changed["realized_pnl"], 10.0)
 
     def test_limit_lifecycle_updates_execution_diagnostics(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1302,6 +1455,25 @@ class BotModeTests(unittest.TestCase):
             self.assertEqual(kwargs["server"], "Broker-Demo")
             self.assertEqual(kwargs["symbol_map"], {"ETHUSDT": "ETHUSD"})
 
+    def test_binance_demo_keeps_explicit_production_market_data_url(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            path = Path(tmp) / "config.demo.json"
+            path.write_text(json.dumps(config), encoding="utf-8")
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "BINANCE_DEMO_API_KEY": "demo-key",
+                    "BINANCE_DEMO_API_SECRET": "demo-secret",
+                },
+                clear=False,
+            ):
+                ctx = build_context(path, orders_enabled=True)
+
+            self.assertEqual(ctx.config["market"]["base_url"], "https://fapi.binance.com")
+            self.assertEqual(ctx.broker.base_url, "https://demo-fapi.binance.com")
+
     @patch("crypto_autobot.bot.request_json")
     def test_demo_klines_use_futures_path_and_keep_order_flow(self, request_json_mock):
         request_json_mock.return_value = [[
@@ -1375,6 +1547,7 @@ class BotModeTests(unittest.TestCase):
             result = public_state(ctx, state)
 
             self.assertEqual(set(result["latest"]), {"BTCUSDT"})
+            self.assertEqual(result["market"]["data_environment"], "Binance Production")
 
     def test_paper_position_closes_after_max_holding_bars(self):
         with tempfile.TemporaryDirectory() as tmp:

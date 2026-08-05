@@ -8,7 +8,7 @@
     "data_dir": "crypto_autobot/data"
   },
   "market": {
-    "base_url": "https://demo-fapi.binance.com",
+    "base_url": "https://fapi.binance.com",
     "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
     "interval": "4h",
     "history_limit": 320

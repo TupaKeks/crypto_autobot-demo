@@ -15,6 +15,12 @@ if str(ROOT) not in sys.path:
 
 from bot import load_config  # noqa: E402
 from portfolio_backtest import prepare_histories, run_portfolio_backtest  # noqa: E402
+from risk_analysis import (  # noqa: E402
+    block_bootstrap_risk,
+    daily_fractional_returns,
+    max_consecutive_losses,
+    rolling_window_risk,
+)
 from rolling_universe import DAY_MS, basic_metrics, load_cached_histories  # noqa: E402
 
 
@@ -65,6 +71,37 @@ def run_period(
     )
 
 
+def robustness(
+    result: dict[str, Any],
+    start: int,
+    end: int,
+    account: dict[str, Any],
+    *,
+    bootstrap: bool,
+    seed: int,
+) -> dict[str, Any]:
+    risk_by_side = {
+        "long": float(account.get("long_risk_per_trade_percent", account["risk_per_trade_percent"])),
+        "short": float(account.get("short_risk_per_trade_percent", account["risk_per_trade_percent"])),
+    }
+    trades = list(result["trade_log"])
+    daily_returns = daily_fractional_returns(trades, start, end, risk_by_side)
+    report = {
+        "daily_observations": len(daily_returns),
+        "max_consecutive_losing_trades": max_consecutive_losses(trades),
+        "rolling_30d": rolling_window_risk(daily_returns, horizon_days=30),
+    }
+    if bootstrap:
+        report["block_bootstrap_30d"] = block_bootstrap_risk(
+            daily_returns,
+            horizon_days=30,
+            block_days=5,
+            simulations=10_000,
+            seed=seed,
+        )
+    return report
+
+
 def main() -> int:
     config = load_config(ROOT / "config.paper.asymmetric-15m.example.json")
     strategy = dict(config["strategy"])
@@ -77,6 +114,7 @@ def main() -> int:
     broker = dict(config["broker"])
 
     candidates: list[dict[str, Any]] = []
+    candidate_runs: dict[float, tuple[dict[str, Any], dict[str, Any]]] = {}
     for long_risk in (0.025, 0.05, 0.075, 0.10, 0.15):
         account = dict(config["account"])
         account["long_risk_per_trade_percent"] = long_risk
@@ -88,6 +126,7 @@ def main() -> int:
             histories, strategy, account, broker, prepared,
             validation_start, confirmation_start, stress=True,
         )
+        candidate_runs[long_risk] = (base, stress)
         months = monthly(base["trade_log"], validation_start, 9)
         candidates.append(
             {
@@ -120,6 +159,7 @@ def main() -> int:
     )
     account = dict(config["account"])
     account["long_risk_per_trade_percent"] = selected["long_risk_percent"]
+    selected_validation, selected_validation_stress = candidate_runs[selected["long_risk_percent"]]
     confirmation = run_period(
         histories, strategy, account, broker, prepared,
         confirmation_start, data_end, stress=False,
@@ -137,6 +177,8 @@ def main() -> int:
             "costs_base": "maker entry 2bps, maker target 2bps, taker stop/time exit 5bps, 2bps slippage",
             "costs_stress": "maker entry/target 4bps, taker stop/time exit 5bps, 3bps slippage",
             "selection_gate": "4-6 trades/day, WR >= 45%, PF >= 1.10, stress PF >= 1.05, 6/9 profitable months",
+            "data_start_utc": dt.datetime.fromtimestamp(validation_start / 1000, dt.timezone.utc).isoformat(),
+            "data_end_utc": dt.datetime.fromtimestamp(data_end / 1000, dt.timezone.utc).isoformat(),
             "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         },
         "validation_candidates": candidates,
@@ -145,6 +187,45 @@ def main() -> int:
         "confirmation_60d": compact(confirmation),
         "confirmation_stress_60d": compact(confirmation_stress),
         "confirmation_months": monthly(confirmation["trade_log"], confirmation_start, 2),
+        "robustness": {
+            "method_note": (
+                "Returns are normalized by side-specific risk. Rolling windows are historical; "
+                "the deterministic 5-day moving-block bootstrap preserves short volatility clusters "
+                "but is not a guarantee of future results."
+            ),
+            "validation": robustness(
+                selected_validation,
+                validation_start,
+                confirmation_start,
+                account,
+                bootstrap=True,
+                seed=20_260_805,
+            ),
+            "validation_stress": robustness(
+                selected_validation_stress,
+                validation_start,
+                confirmation_start,
+                account,
+                bootstrap=True,
+                seed=20_260_806,
+            ),
+            "confirmation": robustness(
+                confirmation,
+                confirmation_start,
+                data_end,
+                account,
+                bootstrap=False,
+                seed=20_260_807,
+            ),
+            "confirmation_stress": robustness(
+                confirmation_stress,
+                confirmation_start,
+                data_end,
+                account,
+                bootstrap=False,
+                seed=20_260_808,
+            ),
+        },
         "rejected_exact_rr_2_note": (
             "SL 1.8 ATR / TP 3.6 ATR was not selected: exploratory validation WR was below 45%; "
             "the selected 1:1.56 profile had stronger base and stressed PF."

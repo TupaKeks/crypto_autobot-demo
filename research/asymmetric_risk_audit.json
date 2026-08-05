@@ -7,7 +7,9 @@
     "costs_base": "maker entry 2bps, maker target 2bps, taker stop/time exit 5bps, 2bps slippage",
     "costs_stress": "maker entry/target 4bps, taker stop/time exit 5bps, 3bps slippage",
     "selection_gate": "4-6 trades/day, WR >= 45%, PF >= 1.10, stress PF >= 1.05, 6/9 profitable months",
-    "generated_at": "2026-08-03T08:33:51+00:00"
+    "data_start_utc": "2025-09-06T19:45:00+00:00",
+    "data_end_utc": "2026-08-02T19:45:00+00:00",
+    "generated_at": "2026-08-05T01:20:50+00:00"
   },
   "validation_candidates": [
     {
@@ -742,5 +744,150 @@
       "net_pnl": 47.62
     }
   ],
+  "robustness": {
+    "method_note": "Returns are normalized by side-specific risk. Rolling windows are historical; the deterministic 5-day moving-block bootstrap preserves short volatility clusters but is not a guarantee of future results.",
+    "validation": {
+      "daily_observations": 270,
+      "max_consecutive_losing_trades": 17,
+      "rolling_30d": {
+        "method": "all overlapping historical windows",
+        "horizon_days": 30,
+        "paths": 241,
+        "probability_profitable_percent": 73.44,
+        "probability_drawdown_at_least_5_percent": 2.9,
+        "probability_drawdown_at_least_10_percent": 0.0,
+        "return_percent": {
+          "worst": -5.748,
+          "p05": -4.184,
+          "median": 1.705,
+          "p95": 4.352,
+          "best": 6.482
+        },
+        "max_drawdown_percent": {
+          "median": 1.752,
+          "p95": 4.783,
+          "worst": 5.748
+        }
+      },
+      "block_bootstrap_30d": {
+        "method": "moving-block bootstrap",
+        "horizon_days": 30,
+        "block_days": 5,
+        "simulations": 10000,
+        "seed": 20260805,
+        "paths": 10000,
+        "probability_profitable_percent": 70.14,
+        "probability_drawdown_at_least_5_percent": 1.01,
+        "probability_drawdown_at_least_10_percent": 0.0,
+        "return_percent": {
+          "worst": -7.197,
+          "p05": -2.64,
+          "median": 1.245,
+          "p95": 5.368,
+          "best": 9.366
+        },
+        "max_drawdown_percent": {
+          "median": 1.676,
+          "p95": 3.907,
+          "worst": 7.734
+        }
+      }
+    },
+    "validation_stress": {
+      "daily_observations": 270,
+      "max_consecutive_losing_trades": 17,
+      "rolling_30d": {
+        "method": "all overlapping historical windows",
+        "horizon_days": 30,
+        "paths": 241,
+        "probability_profitable_percent": 66.39,
+        "probability_drawdown_at_least_5_percent": 7.88,
+        "probability_drawdown_at_least_10_percent": 0.0,
+        "return_percent": {
+          "worst": -6.257,
+          "p05": -4.73,
+          "median": 1.228,
+          "p95": 3.908,
+          "best": 5.991
+        },
+        "max_drawdown_percent": {
+          "median": 1.91,
+          "p95": 5.192,
+          "worst": 6.257
+        }
+      },
+      "block_bootstrap_30d": {
+        "method": "moving-block bootstrap",
+        "horizon_days": 30,
+        "block_days": 5,
+        "simulations": 10000,
+        "seed": 20260806,
+        "paths": 10000,
+        "probability_profitable_percent": 62.18,
+        "probability_drawdown_at_least_5_percent": 1.94,
+        "probability_drawdown_at_least_10_percent": 0.0,
+        "return_percent": {
+          "worst": -7.766,
+          "p05": -3.091,
+          "median": 0.754,
+          "p95": 4.737,
+          "best": 12.285
+        },
+        "max_drawdown_percent": {
+          "median": 1.836,
+          "p95": 4.186,
+          "worst": 8.006
+        }
+      }
+    },
+    "confirmation": {
+      "daily_observations": 60,
+      "max_consecutive_losing_trades": 10,
+      "rolling_30d": {
+        "method": "all overlapping historical windows",
+        "horizon_days": 30,
+        "paths": 31,
+        "probability_profitable_percent": 67.74,
+        "probability_drawdown_at_least_5_percent": 0.0,
+        "probability_drawdown_at_least_10_percent": 0.0,
+        "return_percent": {
+          "worst": -1.357,
+          "p05": -1.166,
+          "median": 0.528,
+          "p95": 2.366,
+          "best": 2.708
+        },
+        "max_drawdown_percent": {
+          "median": 1.647,
+          "p95": 1.788,
+          "worst": 1.788
+        }
+      }
+    },
+    "confirmation_stress": {
+      "daily_observations": 60,
+      "max_consecutive_losing_trades": 10,
+      "rolling_30d": {
+        "method": "all overlapping historical windows",
+        "horizon_days": 30,
+        "paths": 31,
+        "probability_profitable_percent": 51.61,
+        "probability_drawdown_at_least_5_percent": 0.0,
+        "probability_drawdown_at_least_10_percent": 0.0,
+        "return_percent": {
+          "worst": -1.828,
+          "p05": -1.625,
+          "median": 0.079,
+          "p95": 1.923,
+          "best": 2.262
+        },
+        "max_drawdown_percent": {
+          "median": 1.756,
+          "p95": 2.046,
+          "worst": 2.046
+        }
+      }
+    }
+  },
   "rejected_exact_rr_2_note": "SL 1.8 ATR / TP 3.6 ATR was not selected: exploratory validation WR was below 45%; the selected 1:1.56 profile had stronger base and stressed PF."
 }

@@ -7,6 +7,7 @@ import argparse
 import csv
 import dataclasses
 import datetime as dt
+import hashlib
 import json
 import math
 import os
@@ -49,6 +50,15 @@ INTRADAY_STRATEGIES = {
     "intraday_liquidity_sweep",
 }
 ROOT = Path(__file__).resolve().parent
+VALIDATION_DAILY_KEYS = {
+    "validation_pnls",
+    "validation_closed",
+    "validation_wins",
+    "validation_losses",
+    "validation_gross_profit",
+    "validation_gross_loss",
+    "validation_realized_pnl",
+}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -92,6 +102,19 @@ def broker_provider(ctx: BotContext) -> str:
 
 def broker_name(ctx: BotContext) -> str:
     return "MT5" if broker_provider(ctx) == "mt5" else "Binance"
+
+
+def market_data_environment(ctx: BotContext) -> str:
+    if broker_provider(ctx) == "mt5":
+        return "MT5 terminal"
+    host = urllib.parse.urlparse(
+        str(ctx.config.get("market", {}).get("base_url", ""))
+    ).netloc.lower()
+    if host == "fapi.binance.com":
+        return "Binance Production"
+    if host == "demo-fapi.binance.com":
+        return "Binance Demo"
+    return host or "unknown"
 
 
 def merge_config(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -246,18 +269,9 @@ def ensure_validation_daily_history(state: dict[str, Any], timezone: ZoneInfo) -
         return
 
     daily = state.setdefault("daily", {})
-    metric_keys = {
-        "validation_pnls",
-        "validation_closed",
-        "validation_wins",
-        "validation_losses",
-        "validation_gross_profit",
-        "validation_gross_loss",
-        "validation_realized_pnl",
-    }
     for day in daily.values():
         if isinstance(day, dict):
-            for key in metric_keys:
+            for key in VALIDATION_DAILY_KEYS:
                 day.pop(key, None)
     for row in state.get("trades", []):
         if (
@@ -271,12 +285,114 @@ def ensure_validation_daily_history(state: dict[str, Any], timezone: ZoneInfo) -
     state["validation_daily_version"] = 1
 
 
+def validation_profile_payload(ctx: BotContext) -> dict[str, Any]:
+    broker = ctx.config.get("broker", {})
+    return {
+        "market": ctx.config.get("market", {}),
+        "strategy": ctx.config.get("strategy", {}),
+        "ensemble": ctx.config.get("ensemble", {}),
+        "account": ctx.config.get("account", {}),
+        "broker": {
+            key: broker.get(key)
+            for key in (
+                "provider",
+                "mode",
+                "leverage",
+                "margin_type",
+                "working_type",
+                "price_protect",
+                "paper_maker_fee_bps",
+                "paper_taker_fee_bps",
+                "paper_slippage_bps",
+            )
+            if key in broker
+        },
+    }
+
+
+def validation_profile_hash(ctx: BotContext) -> str:
+    encoded = json.dumps(
+        validation_profile_payload(ctx),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def reset_validation_evidence(
+    state: dict[str, Any],
+    ctx: BotContext,
+    *,
+    previous_hash: str | None,
+) -> None:
+    reset_at = now_iso(ctx.timezone)
+    state["validation_started_at"] = reset_at
+    state["validation_coverage"] = {}
+    state["validation_active_dates"] = []
+    for day in state.setdefault("daily", {}).values():
+        if not isinstance(day, dict):
+            continue
+        day["validation_trades"] = 0
+        for key in VALIDATION_DAILY_KEYS:
+            day.pop(key, None)
+    state["validation_daily_version"] = 1
+    state["execution_diagnostics"] = {
+        "started_at": reset_at,
+        "candles_observed": 0,
+        "status_counts": {},
+        "signal_orders": 0,
+        "market_entries": 0,
+        "limit_fills": 0,
+        "limit_expired": 0,
+        "limit_canceled": 0,
+        "last_candle_by_symbol": {},
+    }
+    state["validation_profile_reset"] = {
+        "at": reset_at,
+        "reason": "validation profile changed",
+        "previous_hash": previous_hash,
+    }
+    state.setdefault("logs", []).append(
+        {
+            "time": reset_at,
+            "message": "Demo validation restarted: strategy or market-data profile changed",
+        }
+    )
+    state["logs"] = state["logs"][-120:]
+
+
+def ensure_validation_profile(state: dict[str, Any], ctx: BotContext) -> None:
+    current_hash = validation_profile_hash(ctx)
+    previous_hash = state.get("validation_profile_hash")
+    has_evidence = bool(
+        state.get("validation_coverage")
+        or state.get("validation_active_dates")
+        or any(
+            isinstance(day, dict)
+            and (
+                int(day.get("validation_trades", 0)) > 0
+                or any(key in day for key in VALIDATION_DAILY_KEYS)
+            )
+            for day in state.get("daily", {}).values()
+        )
+    )
+    if previous_hash != current_hash and (previous_hash is not None or has_evidence):
+        reset_validation_evidence(
+            state,
+            ctx,
+            previous_hash=str(previous_hash) if previous_hash is not None else None,
+        )
+    state["validation_profile_hash"] = current_hash
+    state["validation_profile"] = validation_profile_payload(ctx)
+
+
 def ensure_state(ctx: BotContext) -> dict[str, Any]:
     ctx.state_path.parent.mkdir(parents=True, exist_ok=True)
     if ctx.state_path.exists():
         with ctx.state_path.open("r", encoding="utf-8") as f:
             state = json.load(f)
         ensure_validation_daily_history(state, ctx.timezone)
+        ensure_validation_profile(state, ctx)
         return state
 
     balance = float(ctx.config["account"]["initial_balance"])
@@ -321,6 +437,7 @@ def ensure_state(ctx: BotContext) -> dict[str, Any]:
             "consecutive_failures": 0,
         },
     }
+    ensure_validation_profile(state, ctx)
     write_state(ctx, state)
     return state
 
@@ -2068,6 +2185,8 @@ def public_state(ctx: BotContext, state: dict[str, Any]) -> dict[str, Any]:
         "market": {
             "symbols": list(ctx.config.get("market", {}).get("symbols", [])),
             "interval": ctx.config.get("market", {}).get("interval"),
+            "base_url": ctx.config.get("market", {}).get("base_url"),
+            "data_environment": market_data_environment(ctx),
         },
         "broker_status": state.get("broker_status", {}),
         "health": health_snapshot(ctx, state)[0],
@@ -2379,6 +2498,7 @@ def dashboard_html(app_name: str) -> str:
       <div class="statusline">
         <span class="badge" id="modeBadge">Режим: -</span>
         <span class="badge" id="brokerBadge">Binance: -</span>
+        <span class="badge" id="marketBadge">Данные: -</span>
         <span class="badge" id="ordersBadge">Ордера: -</span>
         <span class="badge" id="heartbeatBadge">Цикл: -</span>
         <span class="badge" id="watchdogBadge">Защита: -</span>
@@ -2519,6 +2639,9 @@ async function loadState() {{
   document.getElementById('brokerBadge').title = connected && data.broker_status?.time_sync_rtt_ms !== null && data.broker_status?.time_sync_rtt_ms !== undefined
     ? `Синхронизация времени: RTT ${{data.broker_status.time_sync_rtt_ms}} мс, offset ${{data.broker_status.time_offset_ms ?? '-'}} мс`
     : (data.broker_status?.message || '');
+  document.getElementById('marketBadge').textContent = `Данные: ${{data.market?.data_environment || '-'}}`;
+  document.getElementById('marketBadge').className = 'badge ok';
+  document.getElementById('marketBadge').title = data.market?.base_url || '';
   document.getElementById('ordersBadge').textContent = `Ордера: ${{data.orders_enabled ? 'разрешены' : 'заблокированы'}}`;
   document.getElementById('ordersBadge').className = `badge ${{data.orders_enabled ? (data.mode === 'live' ? 'danger' : 'warn') : 'ok'}}`;
   const health = data.health || {{}};
@@ -2874,7 +2997,7 @@ def build_context(
             price_protect=bool(broker_config.get("price_protect", False)),
             target_order_type=str(config.get("strategy", {}).get("target_order_type", "market")),
         )
-        config.setdefault("market", {})["base_url"] = broker.base_url
+        config.setdefault("market", {}).setdefault("base_url", broker.base_url)
         effective_orders_enabled = orders_enabled
     elif mode != "paper":
         login_env = str(broker_config.get("login_env", "MT5_LOGIN"))

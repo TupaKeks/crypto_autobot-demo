@@ -68,6 +68,10 @@ heartbeat, число ошибок последнего цикла и колич
 Demo и основной Binance используют разные API-ключи. Актуальное описание среды есть
 в [Binance Futures Quick Start](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/quick-start).
 
+В профилях Binance Demo публичные свечи берутся с Binance Production, чтобы
+стратегия видела основной рынок. API-ключ, баланс, стакан и все ордера при этом
+остаются исключительно в Demo. В панели это показано двумя отдельными бейджами.
+
 1. Войди в Binance Demo.
 2. Открой раздел API Management для Demo Futures.
 3. Создай API Key и Secret.

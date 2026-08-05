@@ -5,7 +5,7 @@
     "data_dir": "crypto_autobot/data/asymmetric_15m_demo"
   },
   "market": {
-    "base_url": "https://demo-fapi.binance.com"
+    "base_url": "https://fapi.binance.com"
   },
   "broker": {
     "provider": "binance",

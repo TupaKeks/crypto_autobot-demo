@@ -9,7 +9,7 @@
     "data_dir": "crypto_autobot/data/regime_scalp"
   },
   "market": {
-    "base_url": "https://demo-fapi.binance.com",
+    "base_url": "https://fapi.binance.com",
     "symbols": [
       "AAVEUSDT",
       "ADAUSDT",
