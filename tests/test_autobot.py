@@ -1945,10 +1945,125 @@ class BotModeTests(unittest.TestCase):
                 stop_event=threading.Event(),
             )
             ensure_state(ctx)
-            payload = json.loads(ctx.state_path.read_text(encoding="utf-8"))
-            text = json.dumps(payload).lower()
-            self.assertNotIn("api_key", text)
-            self.assertNotIn("api_secret", text)
+            for path in (ctx.state_path, Path(f"{ctx.state_path}.bak1")):
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                text = json.dumps(payload).lower()
+                self.assertNotIn("api_key", text)
+                self.assertNotIn("api_secret", text)
+
+    def test_state_backups_rotate_only_after_durable_change(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = BotContext(
+                config=test_config(tmp),
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            backup_one = Path(f"{ctx.state_path}.bak1")
+            backup_two = Path(f"{ctx.state_path}.bak2")
+            original_balance = state["balance"]
+            self.assertTrue(backup_one.exists())
+            self.assertFalse(backup_two.exists())
+
+            state["balance"] = original_balance + 25.0
+            write_state(ctx, state)
+            second_before = backup_two.read_text(encoding="utf-8")
+            self.assertEqual(json.loads(backup_one.read_text(encoding="utf-8"))["balance"], original_balance + 25.0)
+            self.assertEqual(json.loads(second_before)["balance"], original_balance)
+
+            state["runtime"]["scan_sequence"] = 99
+            write_state(ctx, state)
+            self.assertEqual(backup_two.read_text(encoding="utf-8"), second_before)
+
+    def test_corrupt_state_recovers_latest_backup_and_archives_original(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = BotContext(
+                config=test_config(tmp),
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            state["balance"] += 42.0
+            state["validation_coverage"] = {"2026-08-05": {"symbol_candles": 123}}
+            write_state(ctx, state)
+            ctx.state_path.write_text("{broken", encoding="utf-8")
+
+            restored = ensure_state(ctx)
+
+            self.assertEqual(restored["balance"], state["balance"])
+            self.assertEqual(
+                restored["validation_coverage"]["2026-08-05"]["symbol_candles"],
+                123,
+            )
+            self.assertEqual(restored["state_recovery"]["source"], "state.json.bak1")
+            corrupt_files = list(Path(tmp).glob("state.json.corrupt-*"))
+            self.assertEqual(len(corrupt_files), 1)
+            self.assertEqual(corrupt_files[0].read_text(encoding="utf-8"), "{broken")
+            self.assertEqual(json.loads(ctx.state_path.read_text(encoding="utf-8"))["balance"], state["balance"])
+
+    def test_state_recovery_falls_back_to_second_generation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = BotContext(
+                config=test_config(tmp),
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            original_balance = state["balance"]
+            state["balance"] += 10.0
+            write_state(ctx, state)
+            ctx.state_path.write_text("bad main", encoding="utf-8")
+            Path(f"{ctx.state_path}.bak1").write_text("bad backup", encoding="utf-8")
+
+            restored = ensure_state(ctx)
+
+            self.assertEqual(restored["balance"], original_balance)
+            self.assertEqual(restored["state_recovery"]["source"], "state.json.bak2")
+            repaired = json.loads(Path(f"{ctx.state_path}.bak1").read_text(encoding="utf-8"))
+            self.assertEqual(repaired["balance"], original_balance)
+
+    def test_corrupt_state_without_valid_backup_never_silently_resets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = BotContext(
+                config=test_config(tmp),
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            ensure_state(ctx)
+            Path(f"{ctx.state_path}.bak1").unlink()
+            ctx.state_path.write_text("{still broken", encoding="utf-8")
+
+            with self.assertRaises(json.JSONDecodeError):
+                ensure_state(ctx)
+            self.assertEqual(ctx.state_path.read_text(encoding="utf-8"), "{still broken")
 
     def test_runtime_switches_paper_to_demo_with_separate_state(self):
         with tempfile.TemporaryDirectory() as tmp:

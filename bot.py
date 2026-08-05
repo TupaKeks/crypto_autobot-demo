@@ -60,6 +60,8 @@ VALIDATION_DAILY_KEYS = {
     "validation_gross_loss",
     "validation_realized_pnl",
 }
+STATE_BACKUP_GENERATIONS = 2
+_STATE_BACKUP_SIGNATURES: dict[str, str] = {}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -418,11 +420,127 @@ def ensure_validation_profile(state: dict[str, Any], ctx: BotContext) -> None:
     state["validation_profile"] = validation_profile_payload(ctx)
 
 
+def state_backup_paths(state_path: Path) -> list[Path]:
+    return [
+        state_path.with_name(f"{state_path.name}.bak{generation}")
+        for generation in range(1, STATE_BACKUP_GENERATIONS + 1)
+    ]
+
+
+def _load_state_json(path: Path) -> dict[str, Any]:
+    with path.open("r", encoding="utf-8") as source:
+        payload = json.load(source)
+    if not isinstance(payload, dict):
+        raise ValueError(f"State file must contain a JSON object: {path}")
+    return payload
+
+
+def _fsync_parent(path: Path) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    try:
+        descriptor = os.open(str(path.parent), flags)
+    except OSError:
+        return
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.tmp")
+    try:
+        with tmp.open("w", encoding="utf-8") as target:
+            json.dump(payload, target, indent=2, sort_keys=True)
+            target.flush()
+            os.fsync(target.fileno())
+        tmp.replace(path)
+        _fsync_parent(path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+def _state_durability_signature(state: dict[str, Any]) -> str:
+    volatile_keys = {
+        "updated_at",
+        "runtime",
+        "latest",
+        "logs",
+        "broker_status",
+        "exchange_positions",
+        "execution_diagnostics",
+    }
+    durable = {key: value for key, value in state.items() if key not in volatile_keys}
+    encoded = json.dumps(durable, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _refresh_state_backups(ctx: BotContext, state: dict[str, Any]) -> None:
+    signature = _state_durability_signature(state)
+    signature_key = str(ctx.state_path.resolve())
+    backups = state_backup_paths(ctx.state_path)
+    if _STATE_BACKUP_SIGNATURES.get(signature_key) == signature and backups[0].exists():
+        return
+
+    if backups[0].exists():
+        try:
+            previous = _load_state_json(backups[0])
+        except (OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError):
+            previous = None
+        if previous is not None:
+            _atomic_write_json(backups[1], previous)
+    _atomic_write_json(backups[0], state)
+    _STATE_BACKUP_SIGNATURES[signature_key] = signature
+
+
+def _recover_state(ctx: BotContext, original_error: Exception) -> dict[str, Any]:
+    recovered: dict[str, Any] | None = None
+    source_path: Path | None = None
+    for backup_path in state_backup_paths(ctx.state_path):
+        try:
+            recovered = _load_state_json(backup_path)
+        except (FileNotFoundError, OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError):
+            continue
+        source_path = backup_path
+        break
+    if recovered is None or source_path is None:
+        raise original_error
+
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    corrupt_path = ctx.state_path.with_name(f"{ctx.state_path.name}.corrupt-{stamp}")
+    ctx.state_path.replace(corrupt_path)
+    recovery_at = now_iso(ctx.timezone)
+    recovered["state_recovery"] = {
+        "at": recovery_at,
+        "source": source_path.name,
+        "corrupt_file": corrupt_path.name,
+    }
+    recovered.setdefault("logs", []).append(
+        {
+            "time": recovery_at,
+            "message": f"State restored from {source_path.name}; corrupt file archived",
+        }
+    )
+    recovered["logs"] = recovered["logs"][-120:]
+    try:
+        _atomic_write_json(ctx.state_path, recovered)
+        _refresh_state_backups(ctx, recovered)
+    except Exception:
+        if not ctx.state_path.exists() and corrupt_path.exists():
+            corrupt_path.replace(ctx.state_path)
+        raise
+    return recovered
+
+
 def ensure_state(ctx: BotContext) -> dict[str, Any]:
     ctx.state_path.parent.mkdir(parents=True, exist_ok=True)
     if ctx.state_path.exists():
-        with ctx.state_path.open("r", encoding="utf-8") as f:
-            state = json.load(f)
+        try:
+            state = _load_state_json(ctx.state_path)
+        except (UnicodeDecodeError, ValueError, json.JSONDecodeError) as exc:
+            state = _recover_state(ctx, exc)
         ensure_validation_daily_history(state, ctx.timezone)
         ensure_validation_profile(state, ctx)
         return state
@@ -476,10 +594,8 @@ def ensure_state(ctx: BotContext) -> dict[str, Any]:
 
 def write_state(ctx: BotContext, state: dict[str, Any]) -> None:
     state["updated_at"] = now_iso(ctx.timezone)
-    tmp = ctx.state_path.with_suffix(ctx.state_path.suffix + ".tmp")
-    with tmp.open("w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2, sort_keys=True)
-    tmp.replace(ctx.state_path)
+    _atomic_write_json(ctx.state_path, state)
+    _refresh_state_backups(ctx, state)
 
 
 def normalize_broker_position(position: dict[str, Any]) -> dict[str, Any]:
@@ -2313,6 +2429,7 @@ def health_snapshot(
     )
     broker_connected = bool(broker_status.get("connected", ctx.mode == "paper"))
     healthy = not stale and not watchdog_stale and (ctx.mode == "paper" or broker_connected)
+    recovery = state.get("state_recovery", {})
     payload = {
         "status": "ok" if healthy else "degraded",
         "mode": ctx.mode,
@@ -2331,6 +2448,11 @@ def health_snapshot(
         "watchdog_age_seconds": round(watchdog_age, 1) if watchdog_age is not None else None,
         "watchdog_stale_after_seconds": watchdog_stale_after,
         "last_watchdog_errors": runtime.get("last_watchdog_errors"),
+        "state_backup_generations": sum(
+            backup.exists() for backup in state_backup_paths(ctx.state_path)
+        ),
+        "state_recovered_at": recovery.get("at"),
+        "state_recovery_source": recovery.get("source"),
     }
     return payload, 200 if healthy else 503
 
@@ -2552,6 +2674,7 @@ def dashboard_html(app_name: str) -> str:
         <span class="badge" id="ordersBadge">Ордера: -</span>
         <span class="badge" id="heartbeatBadge">Цикл: -</span>
         <span class="badge" id="watchdogBadge">Защита: -</span>
+        <span class="badge" id="stateBadge">State: -</span>
         <span class="badge" id="mlBadge">ML: -</span>
         <span class="badge" id="validationBadge">Live gate: -</span>
       </div>
@@ -2721,6 +2844,15 @@ async function loadState() {{
   document.getElementById('watchdogBadge').title = watchdogRequired
     ? `Последняя проверка ${{watchdogAge ?? '-'}} сек. назад`
     : 'Биржевые защитные ордера не используются в Paper';
+  const backupGenerations = Number(health.state_backup_generations || 0);
+  const stateRecovered = Boolean(health.state_recovered_at);
+  document.getElementById('stateBadge').textContent = stateRecovered
+    ? 'State: восстановлен'
+    : `State: ${{backupGenerations}}/2 копии`;
+  document.getElementById('stateBadge').className = `badge ${{stateRecovered ? 'warn' : (backupGenerations > 0 ? 'ok' : 'danger')}}`;
+  document.getElementById('stateBadge').title = stateRecovered
+    ? `Восстановлено ${{health.state_recovered_at}} из ${{health.state_recovery_source || 'резервной копии'}}`
+    : 'Ротационные резервные копии торгового состояния';
   const ml = data.ensemble_status || {{}};
   document.getElementById('mlBadge').textContent = !ml.enabled
     ? 'ML: выключен'
@@ -2958,9 +3090,13 @@ def make_handler(controller: RuntimeController) -> type[BaseHTTPRequestHandler]:
             ctx = self.current_ctx()
             if self.path == "/health":
                 try:
-                    state = json.loads(ctx.state_path.read_text(encoding="utf-8"))
-                except (FileNotFoundError, json.JSONDecodeError):
-                    state = {}
+                    state = _load_state_json(ctx.state_path)
+                except (FileNotFoundError, UnicodeDecodeError, ValueError, json.JSONDecodeError):
+                    try:
+                        with ctx.lock:
+                            state = ensure_state(ctx)
+                    except (OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError):
+                        state = {}
                 payload, status = health_snapshot(ctx, state)
                 send_json(self, payload, status=status)
                 return

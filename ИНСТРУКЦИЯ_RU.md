@@ -123,8 +123,17 @@ crypto_autobot/.venv/bin/python crypto_autobot/bot.py \
 
 ```text
 crypto_autobot/data/asymmetric_15m_demo/state_demo.json
+crypto_autobot/data/asymmetric_15m_demo/state_demo.json.bak1
+crypto_autobot/data/asymmetric_15m_demo/state_demo.json.bak2
 crypto_autobot/data/asymmetric_15m_demo/trades_demo.csv
 ```
+
+Основной JSON записывается атомарно. Две резервные копии ротируются при значимых
+изменениях: новой позиции, изменении баланса, сделки или forward-статистики. Если
+основной файл повреждён, бот автоматически берёт самую свежую валидную копию,
+оставляет повреждённый файл с суффиксом `.corrupt-<время>` и показывает
+`State: восстановлен` в панели. Если повреждены все поколения, бот не создаёт
+пустой счёт и не теряет историю молча, а останавливается для ручной проверки.
 
 ### Внутридневной Demo-профиль
 
@@ -504,5 +513,6 @@ config.demo.asymmetric-15m.example.json   Binance Demo 15m
 config.mt5-demo.asymmetric-15m.example.json  MT5 Demo 15m
 config.live.example.json       Live с безопасными ограничениями
 data/state_*.json              текущее состояние
+data/state_*.json.bak1/.bak2   ротационные резервные копии
 data/trades_*.csv              журнал сделок
 ```
