@@ -24,6 +24,32 @@ def validation_config() -> dict:
 
 
 class ForwardValidationTests(unittest.TestCase):
+    def test_manual_demo_test_is_excluded_from_live_gate(self):
+        state = {
+            "created_at": "2026-07-01T00:00:00+00:00",
+            "validation_active_dates": [f"2026-07-{day:02d}" for day in range(1, 31)],
+            "daily": {
+                "2026-07-01": {"trades": 1, "validation_trades": 0},
+            },
+            "initial_balance": 1000,
+            "realized_pnl": 100,
+            "trades": [
+                {"event": "open", "source": "manual_demo_test", "pnl": 0},
+                {"event": "close", "source": "manual_demo_test", "pnl": 100},
+            ],
+        }
+
+        report = forward_validation_report(
+            validation_config(),
+            state,
+            now=dt.datetime(2026, 8, 1, tzinfo=dt.timezone.utc),
+        )
+
+        self.assertEqual(report["opened_trades"], 0)
+        self.assertEqual(report["closed_trades"], 0)
+        self.assertEqual(report["return_percent"], 0)
+        self.assertFalse(report["ready_for_live"])
+
     def test_empty_demo_state_is_collecting(self):
         state = {
             "created_at": "2026-08-01T00:00:00+00:00",

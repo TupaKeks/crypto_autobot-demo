@@ -684,6 +684,7 @@ def close_position(
         "pnl": round(pnl, 2),
         "balance": round(float(state["balance"]), 2),
         "reason": reason,
+        "source": str(position.get("source", "baseline")),
     }
     append_trade(ctx, state, row)
     log_event(
@@ -799,6 +800,9 @@ def open_position(
     state.setdefault("positions", {})[symbol] = position
     daily = daily_stats(state, ctx)
     daily["trades"] = int(daily.get("trades", 0)) + 1
+    daily.setdefault("validation_trades", 0)
+    if position["source"] != "manual_demo_test":
+        daily["validation_trades"] = int(daily.get("validation_trades", 0)) + 1
     if position["source"] == "orderflow_ml":
         daily["orderflow_ml_trades"] = int(daily.get("orderflow_ml_trades", 0)) + 1
 
@@ -1102,6 +1106,7 @@ def record_exchange_close(
             f"{broker_name(ctx)} position closed; realized={pnl_info['realized_pnl']:.2f}, "
             f"commission={pnl_info['commission']:.2f}"
         ),
+        "source": str(position.get("source", "baseline")),
     }
     append_trade(ctx, state, row)
     ctx.broker.cancel_protection(symbol)
@@ -1595,6 +1600,7 @@ def open_demo_test_order(
             candle,
             float(atr_values[-1]),
             "manual Binance Demo market test",
+            trade_profile={"source": "manual_demo_test"},
         )
         state.setdefault("latest", {})[symbol] = {
             "symbol": symbol,

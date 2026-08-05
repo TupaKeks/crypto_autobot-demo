@@ -45,6 +45,10 @@ def _max_drawdown_percent(initial_balance: float, closed_trades: list[dict[str, 
     return max_drawdown
 
 
+def _is_validation_trade(trade: dict[str, Any]) -> bool:
+    return str(trade.get("source", "baseline")) != "manual_demo_test"
+
+
 def forward_validation_report(
     config: dict[str, Any],
     state: dict[str, Any],
@@ -72,8 +76,16 @@ def forward_validation_report(
     observation_days = float(len(active_dates)) if active_dates else calendar_days
 
     trades = list(state.get("trades", []))
-    opened = [item for item in trades if item.get("event") == "open"]
-    closed = [item for item in trades if item.get("event") == "close"]
+    opened = [
+        item
+        for item in trades
+        if item.get("event") == "open" and _is_validation_trade(item)
+    ]
+    closed = [
+        item
+        for item in trades
+        if item.get("event") == "close" and _is_validation_trade(item)
+    ]
     wins = [item for item in closed if float(item.get("pnl", 0.0)) > 0]
     losses = [item for item in closed if float(item.get("pnl", 0.0)) < 0]
     gross_profit = sum(float(item.get("pnl", 0.0)) for item in wins)
@@ -81,15 +93,27 @@ def forward_validation_report(
     profit_factor = gross_profit / gross_loss if gross_loss > 0 else None
     profit_factor_infinite = gross_profit > 0 and gross_loss == 0
     win_rate = len(wins) / len(closed) * 100.0 if closed else 0.0
-    daily_opened = sum(
-        max(0, int(item.get("trades", 0)))
+    daily_rows = [
+        item
         for item in state.get("daily", {}).values()
         if isinstance(item, dict)
+    ]
+    has_validation_totals = any("validation_trades" in item for item in daily_rows)
+    daily_opened = sum(
+        max(
+            0,
+            int(
+                item.get("validation_trades", 0)
+                if has_validation_totals
+                else item.get("trades", 0)
+            ),
+        )
+        for item in daily_rows
     )
     opened_count = max(len(opened), daily_opened)
     trades_per_day = opened_count / max(observation_days, 1.0)
     initial_balance = float(state.get("initial_balance", 0.0))
-    realized_pnl = float(state.get("realized_pnl", 0.0))
+    realized_pnl = sum(float(item.get("pnl", 0.0)) for item in closed)
     return_percent = realized_pnl / initial_balance * 100.0 if initial_balance > 0 else 0.0
     drawdown = _max_drawdown_percent(initial_balance, closed)
     strategy = config.get("strategy", {})

@@ -1525,6 +1525,9 @@ class BotModeTests(unittest.TestCase):
             self.assertEqual(payload["status"], "ok")
             self.assertEqual(payload["state"]["positions"]["BTCUSDT"]["side"], "long")
             self.assertEqual(payload["state"]["positions"]["BTCUSDT"]["reason"], "manual Binance Demo market test")
+            self.assertEqual(payload["state"]["positions"]["BTCUSDT"]["source"], "manual_demo_test")
+            state = ensure_state(ctx)
+            self.assertEqual(next(iter(state["daily"].values()))["validation_trades"], 0)
 
     def test_adx_detects_a_clean_trend(self):
         candles = [
