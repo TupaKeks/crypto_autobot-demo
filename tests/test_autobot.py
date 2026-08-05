@@ -12,6 +12,7 @@ from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from crypto_autobot.binance_futures import (
+    BinanceAPIError,
     BinanceFuturesBroker,
     LIVE_CONFIRMATION,
     SymbolRules,
@@ -244,6 +245,58 @@ class BinanceMathTests(unittest.TestCase):
 
 
 class BinanceBrokerTests(unittest.TestCase):
+    def test_time_sync_uses_round_trip_midpoint(self):
+        broker = BinanceFuturesBroker(
+            environment="demo",
+            api_key="key",
+            secret_key="secret",
+        )
+        broker.public = lambda *_args, **_kwargs: {"serverTime": 1_100}
+
+        with patch("crypto_autobot.binance_futures.time.time", side_effect=[1.0, 1.2]):
+            offset = broker.sync_time()
+
+        self.assertEqual(offset, 0)
+        self.assertEqual(broker.last_time_sync_rtt_ms, 200)
+
+    def test_signed_request_resyncs_and_retries_timestamp_error_once(self):
+        broker = BinanceFuturesBroker(
+            environment="demo",
+            api_key="key",
+            secret_key="secret",
+        )
+        calls = []
+
+        def request(method, path, params, signed):
+            calls.append((method, path, params, signed))
+            if len(calls) == 1:
+                raise BinanceAPIError(400, {"code": -1021, "msg": "timestamp outside recvWindow"})
+            return {"status": "ok"}
+
+        broker._request = request
+        broker.sync_time = lambda: setattr(broker, "time_offset_ms", 250) or 250
+        with patch("crypto_autobot.binance_futures.time.time", return_value=1.0):
+            result = broker.signed("GET", "/fapi/v3/balance")
+
+        self.assertEqual(result, {"status": "ok"})
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0][2]["timestamp"], 1_000)
+        self.assertEqual(calls[1][2]["timestamp"], 1_250)
+
+    def test_signed_request_does_not_retry_other_binance_errors(self):
+        broker = BinanceFuturesBroker(
+            environment="demo",
+            api_key="key",
+            secret_key="secret",
+        )
+        broker._request = lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            BinanceAPIError(400, {"code": -2019, "msg": "margin is insufficient"})
+        )
+        broker.sync_time = lambda: self.fail("non-timestamp errors must not resync")
+
+        with self.assertRaises(BinanceAPIError):
+            broker.signed("POST", "/fapi/v1/order", {"symbol": "BTCUSDT"})
+
     def test_limit_entry_is_post_only_and_tick_rounded(self):
         broker = BinanceFuturesBroker(
             environment="demo",

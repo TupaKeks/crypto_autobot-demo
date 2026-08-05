@@ -1022,6 +1022,8 @@ def apply_exchange_account_summary(
         "environment": summary["environment"],
         "position_mode": summary["position_mode"],
         "available_balance": float(summary["available_balance"]),
+        "time_offset_ms": summary.get("time_offset_ms"),
+        "time_sync_rtt_ms": summary.get("time_sync_rtt_ms"),
         "message": "Connected",
     }
     state.pop("last_broker_error", None)
@@ -2382,6 +2384,9 @@ async function loadState() {{
   document.getElementById('modeBadge').className = `badge ${{data.mode === 'live' ? 'danger' : (data.mode === 'demo' ? 'warn' : 'ok')}}`;
   document.getElementById('brokerBadge').textContent = `${{data.broker_name || 'Broker'}}: ${{connected ? 'подключён' : 'нет подключения'}}`;
   document.getElementById('brokerBadge').className = `badge ${{connected ? 'ok' : 'danger'}}`;
+  document.getElementById('brokerBadge').title = connected && data.broker_status?.time_sync_rtt_ms !== null && data.broker_status?.time_sync_rtt_ms !== undefined
+    ? `Синхронизация времени: RTT ${{data.broker_status.time_sync_rtt_ms}} мс, offset ${{data.broker_status.time_offset_ms ?? '-'}} мс`
+    : (data.broker_status?.message || '');
   document.getElementById('ordersBadge').textContent = `Ордера: ${{data.orders_enabled ? 'разрешены' : 'заблокированы'}}`;
   document.getElementById('ordersBadge').className = `badge ${{data.orders_enabled ? (data.mode === 'live' ? 'danger' : 'warn') : 'ok'}}`;
   const health = data.health || {{}};

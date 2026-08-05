@@ -111,20 +111,41 @@ class BinanceFuturesBroker:
         self.price_protect = price_protect
         self.target_order_type = target_order_type
         self.time_offset_ms = 0
+        self.last_time_sync_rtt_ms = 0
         self._rules: dict[str, SymbolRules] = {}
 
     def public(self, method: str, path: str, params: dict[str, Any] | None = None) -> Any:
         return self._request(method, path, params or {}, signed=False)
 
     def signed(self, method: str, path: str, params: dict[str, Any] | None = None) -> Any:
+        try:
+            return self._signed_once(method, path, params)
+        except BinanceAPIError as exc:
+            if exc.code != -1021:
+                raise
+            # Binance rejects -1021 before forwarding the request to the
+            # matching engine, so one time-sync retry is safe for orders too.
+            self.sync_time()
+            return self._signed_once(method, path, params)
+
+    def _signed_once(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, Any] | None = None,
+    ) -> Any:
         signed_params = dict(params or {})
         signed_params["recvWindow"] = self.recv_window_ms
         signed_params["timestamp"] = int(time.time() * 1000) + self.time_offset_ms
         return self._request(method, path, signed_params, signed=True)
 
     def sync_time(self) -> int:
+        started_ms = int(time.time() * 1000)
         server_time = int(self.public("GET", "/fapi/v1/time")["serverTime"])
-        self.time_offset_ms = server_time - int(time.time() * 1000)
+        completed_ms = int(time.time() * 1000)
+        midpoint_ms = started_ms + (completed_ms - started_ms) // 2
+        self.time_offset_ms = server_time - midpoint_ms
+        self.last_time_sync_rtt_ms = max(0, completed_ms - started_ms)
         return self.time_offset_ms
 
     def _request(self, method: str, path: str, params: dict[str, Any], signed: bool) -> Any:
@@ -200,6 +221,8 @@ class BinanceFuturesBroker:
             "positions": positions,
             "position_mode": "one-way",
             "orders_enabled": self.orders_enabled,
+            "time_offset_ms": self.time_offset_ms,
+            "time_sync_rtt_ms": self.last_time_sync_rtt_ms,
         }
 
     def symbol_rules(self, symbol: str) -> SymbolRules:
