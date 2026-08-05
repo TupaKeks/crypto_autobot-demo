@@ -693,6 +693,40 @@ class BotModeTests(unittest.TestCase):
             diagnostics = state["execution_diagnostics"]
             self.assertEqual(diagnostics["candles_observed"], 2)
             self.assertEqual(diagnostics["status_counts"], {"no_signal": 1, "signal_order": 1})
+            self.assertEqual(state["validation_coverage"]["1970-01-01"]["symbol_candles"], 2)
+
+    def test_validation_coverage_ignores_stale_data_and_scan_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = BotContext(
+                config=mode_config(tmp, "paper"),
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+
+            record_scan_diagnostic(
+                state,
+                {"symbol": "BTCUSDT", "candle_open_time": 900_000, "status": "stale market data"},
+                ctx.timezone,
+            )
+            record_scan_diagnostic(
+                state,
+                {"symbol": "ETHUSDT", "candle_open_time": 900_000, "status": "scan error: timeout"},
+                ctx.timezone,
+            )
+
+            self.assertEqual(state["validation_coverage"], {})
+            self.assertEqual(
+                state["execution_diagnostics"]["status_counts"],
+                {"stale_data": 1, "error": 1},
+            )
 
     def test_limit_lifecycle_updates_execution_diagnostics(self):
         with tempfile.TemporaryDirectory() as tmp:

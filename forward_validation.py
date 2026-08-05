@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import math
 from typing import Any
 
 
@@ -16,6 +17,7 @@ DEFAULT_RULES: dict[str, float | int] = {
     "max_drawdown_percent": 10.0,
     "min_return_percent": 0.0,
     "min_nominal_reward_risk": 1.50,
+    "min_daily_data_coverage_percent": 75.0,
 }
 
 
@@ -49,6 +51,14 @@ def _is_validation_trade(trade: dict[str, Any]) -> bool:
     return str(trade.get("source", "baseline")) != "manual_demo_test"
 
 
+def _interval_milliseconds(interval: str) -> int:
+    units = {"m": 60_000, "h": 3_600_000, "d": 86_400_000}
+    unit = interval[-1]
+    if unit not in units:
+        raise ValueError(f"Unsupported interval: {interval}")
+    return int(interval[:-1]) * units[unit]
+
+
 def forward_validation_report(
     config: dict[str, Any],
     state: dict[str, Any],
@@ -68,12 +78,42 @@ def forward_validation_report(
         if started_at is not None
         else 0.0
     )
-    active_dates = {
-        str(value)
-        for value in state.get("validation_active_dates", [])
-        if str(value).strip()
-    }
-    observation_days = float(len(active_dates)) if active_dates else calendar_days
+    coverage_rows = state.get("validation_coverage", {})
+    coverage_required = None
+    qualified_dates: list[str] = []
+    current_date = current.astimezone(timezone).date().isoformat()
+    current_date_coverage = 0
+    coverage_enabled = "validation_coverage" in state and isinstance(coverage_rows, dict)
+    if coverage_enabled:
+        interval = str(config.get("market", {}).get("interval", "15m"))
+        symbols = list(config.get("market", {}).get("symbols", []))
+        expected_per_day = max(
+            1,
+            int(86_400_000 / _interval_milliseconds(interval)) * max(1, len(symbols)),
+        )
+        coverage_required = math.ceil(
+            expected_per_day
+            * float(rules["min_daily_data_coverage_percent"])
+            / 100.0
+        )
+        current_row = coverage_rows.get(current_date, {})
+        if isinstance(current_row, dict):
+            current_date_coverage = max(0, int(current_row.get("symbol_candles", 0)))
+        qualified_dates = sorted(
+            str(date_key)
+            for date_key, row in coverage_rows.items()
+            if str(date_key) < current_date
+            and isinstance(row, dict)
+            and int(row.get("symbol_candles", 0)) >= coverage_required
+        )
+        observation_days = float(len(qualified_dates))
+    else:
+        active_dates = {
+            str(value)
+            for value in state.get("validation_active_dates", [])
+            if str(value).strip()
+        }
+        observation_days = float(len(active_dates)) if active_dates else calendar_days
 
     trades = list(state.get("trades", []))
     opened = [
@@ -200,6 +240,11 @@ def forward_validation_report(
             f"Собираем Demo-выборку: {len(closed)}/{int(rules['min_closed_trades'])} сделок, "
             f"{observation_days:.1f}/{int(rules['min_observation_days'])} дней."
         )
+        if coverage_required is not None:
+            summary += (
+                f" Покрытие сегодня: {current_date_coverage}/{coverage_required} "
+                "закрытых свечей."
+            )
     else:
         status = "failed"
         summary = "Выборка достаточна, но стратегия не прошла все критерии Live."
@@ -210,6 +255,11 @@ def forward_validation_report(
         "summary": summary,
         "started_at": started_at.isoformat() if started_at else None,
         "observation_days": round(observation_days, 2),
+        "qualified_observation_dates": qualified_dates,
+        "daily_coverage_required": coverage_required,
+        "current_date": current_date,
+        "current_date_coverage": current_date_coverage,
+        "daily_coverage": coverage_rows if isinstance(coverage_rows, dict) else {},
         "opened_trades": opened_count,
         "closed_trades": len(closed),
         "trades_per_day": round(trades_per_day, 2),

@@ -8,6 +8,7 @@ from crypto_autobot.forward_validation import forward_validation_report
 
 def validation_config() -> dict:
     return {
+        "market": {"interval": "15m", "symbols": ["BTCUSDT"]},
         "strategy": {"stop_atr": 2.0, "target_atr": 3.2},
         "forward_validation": {
             "min_observation_days": 30,
@@ -19,11 +20,57 @@ def validation_config() -> dict:
             "max_drawdown_percent": 10,
             "min_return_percent": 0,
             "min_nominal_reward_risk": 1.5,
+            "min_daily_data_coverage_percent": 75,
         },
     }
 
 
 class ForwardValidationTests(unittest.TestCase):
+    def test_empty_coverage_does_not_fall_back_to_calendar_age(self):
+        state = {
+            "created_at": "2025-01-01T00:00:00+00:00",
+            "validation_coverage": {},
+            "initial_balance": 1000,
+            "realized_pnl": 0,
+            "trades": [],
+        }
+
+        report = forward_validation_report(
+            validation_config(),
+            state,
+            now=dt.datetime(2026, 8, 1, tzinfo=dt.timezone.utc),
+        )
+
+        self.assertEqual(report["observation_days"], 0)
+        self.assertEqual(report["daily_coverage_required"], 72)
+
+    def test_observation_day_requires_coverage_and_a_completed_date(self):
+        state = {
+            "created_at": "2026-07-01T00:00:00+00:00",
+            "validation_active_dates": ["2026-07-01", "2026-07-02", "2026-08-01"],
+            "validation_coverage": {
+                "2026-07-01": {"symbol_candles": 72},
+                "2026-07-02": {"symbol_candles": 71},
+                "2026-08-01": {"symbol_candles": 96},
+            },
+            "initial_balance": 1000,
+            "realized_pnl": 0,
+            "trades": [],
+        }
+
+        report = forward_validation_report(
+            validation_config(),
+            state,
+            now=dt.datetime(2026, 8, 1, 23, 59, tzinfo=dt.timezone.utc),
+        )
+
+        self.assertEqual(report["daily_coverage_required"], 72)
+        self.assertEqual(report["observation_days"], 1)
+        self.assertEqual(report["qualified_observation_dates"], ["2026-07-01"])
+        self.assertEqual(report["current_date"], "2026-08-01")
+        self.assertEqual(report["current_date_coverage"], 96)
+        self.assertIn("Покрытие сегодня: 96/72", report["summary"])
+
     def test_manual_demo_test_is_excluded_from_live_gate(self):
         state = {
             "created_at": "2026-07-01T00:00:00+00:00",

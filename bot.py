@@ -202,6 +202,15 @@ def record_scan_diagnostic(
     bucket = diagnostic_status_bucket(str(result.get("status", "")))
     counts = diagnostics.setdefault("status_counts", {})
     counts[bucket] = int(counts.get(bucket, 0)) + 1
+    if bucket not in {"stale_data", "error"}:
+        candle_date = dt.datetime.fromtimestamp(
+            int(candle_open_time) / 1000,
+            timezone,
+        ).date().isoformat()
+        coverage = state.setdefault("validation_coverage", {})
+        day = coverage.setdefault(candle_date, {"symbol_candles": 0})
+        day["symbol_candles"] = int(day.get("symbol_candles", 0)) + 1
+        day["updated_at"] = now_iso(timezone)
 
 
 def ensure_state(ctx: BotContext) -> dict[str, Any]:
@@ -233,6 +242,7 @@ def ensure_state(ctx: BotContext) -> dict[str, Any]:
         "seen_signal_candles": {},
         "latest": {},
         "logs": [],
+        "validation_coverage": {},
         "execution_diagnostics": {
             "started_at": now_iso(ctx.timezone),
             "candles_observed": 0,
@@ -1489,10 +1499,7 @@ def scan_once(ctx: BotContext) -> dict[str, Any]:
         runtime["scan_sequence"] = int(runtime.get("scan_sequence", 0)) + 1
         runtime["scan_in_progress"] = True
         runtime["last_scan_started_at"] = now_iso(ctx.timezone)
-        active_dates = state.setdefault("validation_active_dates", [])
-        active_date = today_key(ctx.timezone)
-        if active_date not in active_dates:
-            active_dates.append(active_date)
+        state.setdefault("validation_coverage", {})
         write_state(ctx, state)
 
     account_summary: dict[str, Any] | None = None
