@@ -3,6 +3,7 @@
   "app": {
     "name": "Crypto Autobot Asymmetric 15m Paper",
     "scan_interval_seconds": 15,
+    "market_fetch_workers": 5,
     "data_dir": "crypto_autobot/data/asymmetric_15m_paper"
   },
   "market": {

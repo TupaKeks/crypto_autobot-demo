@@ -613,6 +613,53 @@ class HealthSnapshotTests(unittest.TestCase):
 
 
 class BotModeTests(unittest.TestCase):
+    def test_binance_market_candles_are_fetched_concurrently(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "paper")
+            config["app"]["market_fetch_workers"] = 3
+            config["market"]["symbols"] = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            entered = 0
+            entered_lock = threading.Lock()
+            all_entered = threading.Event()
+            release = threading.Event()
+
+            def concurrent_fetch(_ctx, _symbol):
+                nonlocal entered
+                with entered_lock:
+                    entered += 1
+                    if entered == 3:
+                        all_entered.set()
+                release.wait(1)
+                return [Candle(0, 99, 101, 98, 100, 10, 899_999)]
+
+            def scanned(_ctx, _state, symbol, _btc, _candles):
+                return {"symbol": symbol, "status": "no signal", "candle_open_time": 0}
+
+            with (
+                patch("crypto_autobot.bot.fetch_market_candles", side_effect=concurrent_fetch),
+                patch("crypto_autobot.bot.scan_symbol", side_effect=scanned),
+            ):
+                scan_thread = threading.Thread(target=scan_once, args=(ctx,))
+                scan_thread.start()
+                self.assertTrue(all_entered.wait(0.5))
+                release.set()
+                scan_thread.join(2)
+
+            self.assertFalse(scan_thread.is_alive())
+            self.assertEqual(entered, 3)
+
     def test_execution_diagnostics_count_each_symbol_candle_once(self):
         with tempfile.TemporaryDirectory() as tmp:
             ctx = BotContext(

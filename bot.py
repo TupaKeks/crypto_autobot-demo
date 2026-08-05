@@ -16,6 +16,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -1445,6 +1446,40 @@ def scan_symbol(
     return latest
 
 
+def fetch_scan_candles(
+    ctx: BotContext,
+    symbols: list[str],
+) -> tuple[dict[str, list[Candle]], dict[str, Exception]]:
+    worker_count = max(1, int(ctx.config.get("app", {}).get("market_fetch_workers", 1)))
+    if broker_provider(ctx) == "mt5":
+        worker_count = 1
+    worker_count = min(worker_count, len(symbols)) if symbols else 1
+    candles_by_symbol: dict[str, list[Candle]] = {}
+    errors: dict[str, Exception] = {}
+
+    if worker_count == 1:
+        for symbol in symbols:
+            try:
+                candles_by_symbol[symbol] = fetch_market_candles(ctx, symbol)
+            except Exception as exc:  # noqa: BLE001
+                errors[symbol] = exc
+        return candles_by_symbol, errors
+
+    # Only public Binance candle requests run concurrently. State mutation,
+    # signal evaluation and every broker order remain serialized below.
+    with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="market-data") as pool:
+        futures = {
+            symbol: pool.submit(fetch_market_candles, ctx, symbol)
+            for symbol in symbols
+        }
+        for symbol in symbols:
+            try:
+                candles_by_symbol[symbol] = futures[symbol].result()
+            except Exception as exc:  # noqa: BLE001
+                errors[symbol] = exc
+    return candles_by_symbol, errors
+
+
 def scan_once(ctx: BotContext) -> dict[str, Any]:
     started_monotonic = time.monotonic()
     with ctx.lock:
@@ -1488,21 +1523,25 @@ def scan_once(ctx: BotContext) -> dict[str, Any]:
         runtime["ensemble"] = ml_runtime_status
         write_state(ctx, state)
 
-    if ml_runtime_status.get("ready", False):
-        try:
-            btc_candles = fetch_market_candles(ctx, "BTCUSDT")
-        except Exception as exc:  # noqa: BLE001
-            with ctx.lock:
-                state = ensure_state(ctx)
-                log_event(state, f"BTCUSDT: ML reference error: {exc}", ctx.timezone)
-                write_state(ctx, state)
+    symbols = [str(item).upper() for item in ctx.config["market"]["symbols"]]
+    candles_by_symbol, fetch_errors = fetch_scan_candles(ctx, symbols)
 
-    for configured_symbol in ctx.config["market"]["symbols"]:
-        symbol = str(configured_symbol).upper()
+    if ml_runtime_status.get("ready", False):
+        btc_candles = candles_by_symbol.get("BTCUSDT")
+        if btc_candles is None:
+            try:
+                btc_candles = fetch_market_candles(ctx, "BTCUSDT")
+            except Exception as exc:  # noqa: BLE001
+                with ctx.lock:
+                    state = ensure_state(ctx)
+                    log_event(state, f"BTCUSDT: ML reference error: {exc}", ctx.timezone)
+                    write_state(ctx, state)
+
+    for symbol in symbols:
         try:
-            # Network I/O stays outside the state lock so the protection watchdog
-            # can reconcile filled entries and SL/TP while a market scan is slow.
-            candles = fetch_market_candles(ctx, symbol)
+            if symbol in fetch_errors:
+                raise fetch_errors[symbol]
+            candles = candles_by_symbol[symbol]
             with ctx.lock:
                 state = ensure_state(ctx)
                 result = scan_symbol(
