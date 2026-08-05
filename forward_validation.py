@@ -116,53 +116,89 @@ def forward_validation_report(
         observation_days = float(len(active_dates)) if active_dates else calendar_days
 
     trades = list(state.get("trades", []))
-    opened = [
-        item
-        for item in trades
-        if item.get("event") == "open" and _is_validation_trade(item)
-    ]
-    closed = [
-        item
-        for item in trades
-        if item.get("event") == "close" and _is_validation_trade(item)
-    ]
-    wins = [item for item in closed if float(item.get("pnl", 0.0)) > 0]
-    losses = [item for item in closed if float(item.get("pnl", 0.0)) < 0]
-    gross_profit = sum(float(item.get("pnl", 0.0)) for item in wins)
-    gross_loss = abs(sum(float(item.get("pnl", 0.0)) for item in losses))
+    daily_map = {
+        str(date_key): row
+        for date_key, row in state.get("daily", {}).items()
+        if isinstance(row, dict)
+    }
+    if coverage_enabled:
+        qualified_rows = [daily_map[date_key] for date_key in qualified_dates if date_key in daily_map]
+        opened_count = sum(
+            max(0, int(row.get("validation_trades", row.get("trades", 0))))
+            for row in qualified_rows
+        )
+        pnl_values = [
+            float(pnl)
+            for row in qualified_rows
+            for pnl in row.get("validation_pnls", [])
+        ]
+        if not any("validation_pnls" in row for row in qualified_rows):
+            qualified_set = set(qualified_dates)
+            qualified_trades = []
+            for item in trades:
+                timestamp = _timestamp(item.get("time"))
+                if timestamp is None or timestamp.astimezone(timezone).date().isoformat() not in qualified_set:
+                    continue
+                qualified_trades.append(item)
+            if not qualified_rows:
+                opened_count = sum(
+                    item.get("event") == "open" and _is_validation_trade(item)
+                    for item in qualified_trades
+                )
+            pnl_values = [
+                float(item.get("pnl", 0.0))
+                for item in qualified_trades
+                if item.get("event") == "close" and _is_validation_trade(item)
+            ]
+    else:
+        opened = [
+            item
+            for item in trades
+            if item.get("event") == "open" and _is_validation_trade(item)
+        ]
+        closed = [
+            item
+            for item in trades
+            if item.get("event") == "close" and _is_validation_trade(item)
+        ]
+        daily_rows = list(daily_map.values())
+        has_daily_open_totals = any("validation_trades" in item for item in daily_rows)
+        daily_opened = sum(
+            max(
+                0,
+                int(
+                    item.get("validation_trades", 0)
+                    if has_daily_open_totals
+                    else item.get("trades", 0)
+                ),
+            )
+            for item in daily_rows
+        )
+        opened_count = max(len(opened), daily_opened)
+        pnl_values = [float(item.get("pnl", 0.0)) for item in closed]
+
+    closed_count = len(pnl_values)
+    wins_count = sum(pnl > 0 for pnl in pnl_values)
+    gross_profit = sum(pnl for pnl in pnl_values if pnl > 0)
+    gross_loss = abs(sum(pnl for pnl in pnl_values if pnl < 0))
     profit_factor = gross_profit / gross_loss if gross_loss > 0 else None
     profit_factor_infinite = gross_profit > 0 and gross_loss == 0
-    win_rate = len(wins) / len(closed) * 100.0 if closed else 0.0
-    daily_rows = [
-        item
-        for item in state.get("daily", {}).values()
-        if isinstance(item, dict)
-    ]
-    has_validation_totals = any("validation_trades" in item for item in daily_rows)
-    daily_opened = sum(
-        max(
-            0,
-            int(
-                item.get("validation_trades", 0)
-                if has_validation_totals
-                else item.get("trades", 0)
-            ),
-        )
-        for item in daily_rows
-    )
-    opened_count = max(len(opened), daily_opened)
+    win_rate = wins_count / closed_count * 100.0 if closed_count else 0.0
     trades_per_day = opened_count / max(observation_days, 1.0)
     initial_balance = float(state.get("initial_balance", 0.0))
-    realized_pnl = sum(float(item.get("pnl", 0.0)) for item in closed)
+    realized_pnl = sum(pnl_values)
     return_percent = realized_pnl / initial_balance * 100.0 if initial_balance > 0 else 0.0
-    drawdown = _max_drawdown_percent(initial_balance, closed)
+    drawdown = _max_drawdown_percent(
+        initial_balance,
+        [{"pnl": pnl} for pnl in pnl_values],
+    )
     strategy = config.get("strategy", {})
     stop_atr = float(strategy.get("stop_atr", 0.0))
     target_atr = float(strategy.get("target_atr", 0.0))
     nominal_rr = target_atr / stop_atr if stop_atr > 0 else 0.0
 
     enough_days = observation_days >= float(rules["min_observation_days"])
-    enough_trades = len(closed) >= int(rules["min_closed_trades"])
+    enough_trades = closed_count >= int(rules["min_closed_trades"])
     checks = [
         {
             "id": "observation_days",
@@ -174,7 +210,7 @@ def forward_validation_report(
         {
             "id": "closed_trades",
             "label": "Закрытые сделки",
-            "value": len(closed),
+            "value": closed_count,
             "target": f">= {int(rules['min_closed_trades'])}",
             "passed": enough_trades,
         },
@@ -237,7 +273,7 @@ def forward_validation_report(
     elif not enough_days or not enough_trades:
         status = "collecting"
         summary = (
-            f"Собираем Demo-выборку: {len(closed)}/{int(rules['min_closed_trades'])} сделок, "
+            f"Собираем Demo-выборку: {closed_count}/{int(rules['min_closed_trades'])} сделок, "
             f"{observation_days:.1f}/{int(rules['min_observation_days'])} дней."
         )
         if coverage_required is not None:
@@ -261,7 +297,7 @@ def forward_validation_report(
         "current_date_coverage": current_date_coverage,
         "daily_coverage": coverage_rows if isinstance(coverage_rows, dict) else {},
         "opened_trades": opened_count,
-        "closed_trades": len(closed),
+        "closed_trades": closed_count,
         "trades_per_day": round(trades_per_day, 2),
         "win_rate": round(win_rate, 2),
         "profit_factor": None if profit_factor is None else round(profit_factor, 3),

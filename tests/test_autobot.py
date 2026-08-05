@@ -25,6 +25,7 @@ from crypto_autobot.bot import (
     DEMO_TEST_CONFIRMATION,
     RuntimeController,
     adx,
+    append_trade,
     broker_watchdog_once,
     broker_readiness_snapshot,
     build_context,
@@ -727,6 +728,93 @@ class BotModeTests(unittest.TestCase):
                 state["execution_diagnostics"]["status_counts"],
                 {"stale_data": 1, "error": 1},
             )
+
+    def test_daily_validation_metrics_survive_trade_log_trimming(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = BotContext(
+                config=mode_config(tmp, "paper"),
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            state = ensure_state(ctx)
+            ensure_trades_file(ctx)
+            day = state["daily"].setdefault("2026-08-01", {"trades": 300, "validation_trades": 300})
+
+            for index in range(300):
+                base = {
+                    "time": "2026-08-01T12:00:00+00:00",
+                    "symbol": "BTCUSDT",
+                    "side": "long",
+                    "source": "baseline",
+                }
+                append_trade(ctx, state, {**base, "event": "open", "pnl": 0, "reason": str(index)})
+                append_trade(ctx, state, {**base, "event": "close", "pnl": 3.0, "reason": str(index)})
+            append_trade(
+                ctx,
+                state,
+                {
+                    "time": "2026-08-01T12:00:00+00:00",
+                    "event": "close",
+                    "symbol": "BTCUSDT",
+                    "side": "long",
+                    "pnl": 999.0,
+                    "source": "manual_demo_test",
+                },
+            )
+
+            self.assertEqual(len(state["trades"]), 500)
+            self.assertEqual(day["validation_closed"], 300)
+            self.assertEqual(len(day["validation_pnls"]), 300)
+            self.assertEqual(day["validation_realized_pnl"], 900.0)
+
+    def test_daily_validation_history_migrates_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ctx = BotContext(
+                config=mode_config(tmp, "paper"),
+                state_path=Path(tmp) / "state.json",
+                trades_path=Path(tmp) / "trades.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="paper",
+                broker=None,
+                orders_enabled=True,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            legacy = {
+                "initial_balance": 1000,
+                "daily": {"2026-08-01": {"trades": 2, "validation_trades": 1}},
+                "trades": [
+                    {
+                        "time": "2026-08-02T00:30:00+00:00",
+                        "event": "close",
+                        "pnl": 3.0,
+                        "validation_date": "2026-08-01",
+                    },
+                    {
+                        "time": "2026-08-01T13:00:00+00:00",
+                        "event": "close",
+                        "pnl": 50.0,
+                        "source": "manual_demo_test",
+                    },
+                ],
+            }
+            ctx.state_path.write_text(json.dumps(legacy), encoding="utf-8")
+
+            migrated = ensure_state(ctx)
+            write_state(ctx, migrated)
+            reloaded = ensure_state(ctx)
+
+            self.assertEqual(reloaded["validation_daily_version"], 1)
+            self.assertEqual(reloaded["daily"]["2026-08-01"]["validation_pnls"], [3.0])
+            self.assertEqual(reloaded["daily"]["2026-08-01"]["validation_closed"], 1)
 
     def test_limit_lifecycle_updates_execution_diagnostics(self):
         with tempfile.TemporaryDirectory() as tmp:

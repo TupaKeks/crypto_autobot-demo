@@ -71,6 +71,50 @@ class ForwardValidationTests(unittest.TestCase):
         self.assertEqual(report["current_date_coverage"], 96)
         self.assertIn("Покрытие сегодня: 96/72", report["summary"])
 
+    def test_gate_uses_only_durable_metrics_from_qualified_days(self):
+        dates = [f"2026-07-{day:02d}" for day in range(1, 31)]
+        state = {
+            "created_at": "2026-07-01T00:00:00+00:00",
+            "validation_coverage": {
+                **{date_key: {"symbol_candles": 72} for date_key in dates},
+                "2026-08-01": {"symbol_candles": 96},
+            },
+            "validation_daily_version": 1,
+            "daily": {
+                **{
+                    date_key: {
+                        "trades": 5,
+                        "validation_trades": 5,
+                        "validation_pnls": [3.2, -2.0, 3.2, -2.0, 3.2],
+                    }
+                    for date_key in dates
+                },
+                "2026-08-01": {
+                    "trades": 12,
+                    "validation_trades": 12,
+                    "validation_pnls": [100.0] * 12,
+                },
+            },
+            "initial_balance": 1000,
+            "trades": [
+                {"time": "2026-08-01T10:00:00+00:00", "event": "close", "pnl": 100.0}
+            ],
+        }
+
+        report = forward_validation_report(
+            validation_config(),
+            state,
+            now=dt.datetime(2026, 8, 1, 23, 59, tzinfo=dt.timezone.utc),
+        )
+
+        self.assertEqual(report["observation_days"], 30)
+        self.assertEqual(report["opened_trades"], 150)
+        self.assertEqual(report["closed_trades"], 150)
+        self.assertEqual(report["trades_per_day"], 5)
+        self.assertEqual(report["win_rate"], 60)
+        self.assertEqual(report["profit_factor"], 2.4)
+        self.assertTrue(report["ready_for_live"])
+
     def test_manual_demo_test_is_excluded_from_live_gate(self):
         state = {
             "created_at": "2026-07-01T00:00:00+00:00",

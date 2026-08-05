@@ -213,11 +213,71 @@ def record_scan_diagnostic(
         day["updated_at"] = now_iso(timezone)
 
 
+def validation_trade_date(row: dict[str, Any], timezone: ZoneInfo) -> str:
+    explicit_date = str(row.get("validation_date", ""))
+    try:
+        return dt.date.fromisoformat(explicit_date).isoformat()
+    except ValueError:
+        pass
+    value = str(row.get("time", ""))
+    try:
+        parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        parsed = dt.datetime.now(timezone)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone)
+    return parsed.astimezone(timezone).date().isoformat()
+
+
+def record_validation_close(day: dict[str, Any], pnl: float) -> None:
+    day.setdefault("validation_pnls", []).append(float(pnl))
+    day["validation_closed"] = int(day.get("validation_closed", 0)) + 1
+    if pnl > 0:
+        day["validation_wins"] = int(day.get("validation_wins", 0)) + 1
+        day["validation_gross_profit"] = float(day.get("validation_gross_profit", 0.0)) + pnl
+    elif pnl < 0:
+        day["validation_losses"] = int(day.get("validation_losses", 0)) + 1
+        day["validation_gross_loss"] = float(day.get("validation_gross_loss", 0.0)) + abs(pnl)
+    day["validation_realized_pnl"] = float(day.get("validation_realized_pnl", 0.0)) + pnl
+
+
+def ensure_validation_daily_history(state: dict[str, Any], timezone: ZoneInfo) -> None:
+    if int(state.get("validation_daily_version", 0)) == 1:
+        return
+
+    daily = state.setdefault("daily", {})
+    metric_keys = {
+        "validation_pnls",
+        "validation_closed",
+        "validation_wins",
+        "validation_losses",
+        "validation_gross_profit",
+        "validation_gross_loss",
+        "validation_realized_pnl",
+    }
+    for day in daily.values():
+        if isinstance(day, dict):
+            for key in metric_keys:
+                day.pop(key, None)
+    for row in state.get("trades", []):
+        if (
+            str(row.get("event", "")) != "close"
+            or str(row.get("source", "baseline")) == "manual_demo_test"
+        ):
+            continue
+        date_key = validation_trade_date(row, timezone)
+        day = daily.setdefault(date_key, {"trades": 0, "realized_pnl": 0.0})
+        record_validation_close(day, float(row.get("pnl", 0.0)))
+    state["validation_daily_version"] = 1
+
+
 def ensure_state(ctx: BotContext) -> dict[str, Any]:
     ctx.state_path.parent.mkdir(parents=True, exist_ok=True)
     if ctx.state_path.exists():
         with ctx.state_path.open("r", encoding="utf-8") as f:
-            return json.load(f)
+            state = json.load(f)
+        ensure_validation_daily_history(state, ctx.timezone)
+        return state
 
     balance = float(ctx.config["account"]["initial_balance"])
     state = {
@@ -243,6 +303,7 @@ def ensure_state(ctx: BotContext) -> dict[str, Any]:
         "latest": {},
         "logs": [],
         "validation_coverage": {},
+        "validation_daily_version": 1,
         "execution_diagnostics": {
             "started_at": now_iso(ctx.timezone),
             "candles_observed": 0,
@@ -330,7 +391,18 @@ def log_event(state: dict[str, Any], message: str, timezone: ZoneInfo) -> None:
 
 
 def append_trade(ctx: BotContext, state: dict[str, Any], row: dict[str, Any]) -> None:
+    ensure_validation_daily_history(state, ctx.timezone)
     state.setdefault("trades", []).append(row)
+    if (
+        str(row.get("event", "")) == "close"
+        and str(row.get("source", "baseline")) != "manual_demo_test"
+    ):
+        date_key = validation_trade_date(row, ctx.timezone)
+        day = state.setdefault("daily", {}).setdefault(
+            date_key,
+            {"trades": 0, "realized_pnl": 0.0},
+        )
+        record_validation_close(day, float(row.get("pnl", 0.0)))
     state["trades"] = state["trades"][-500:]
     with ctx.trades_path.open("a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -696,6 +768,10 @@ def close_position(
         "balance": round(float(state["balance"]), 2),
         "reason": reason,
         "source": str(position.get("source", "baseline")),
+        "validation_date": validation_trade_date(
+            {"time": position.get("opened_at")},
+            ctx.timezone,
+        ),
     }
     append_trade(ctx, state, row)
     log_event(
@@ -1118,6 +1194,10 @@ def record_exchange_close(
             f"commission={pnl_info['commission']:.2f}"
         ),
         "source": str(position.get("source", "baseline")),
+        "validation_date": validation_trade_date(
+            {"time": position.get("opened_at")},
+            ctx.timezone,
+        ),
     }
     append_trade(ctx, state, row)
     ctx.broker.cancel_protection(symbol)
