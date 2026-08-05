@@ -172,6 +172,25 @@ class MT5Broker:
         names = ("TRADE_RETCODE_DONE", "TRADE_RETCODE_PLACED", "TRADE_RETCODE_DONE_PARTIAL")
         return {int(getattr(self.mt5, name)) for name in names if hasattr(self.mt5, name)}
 
+    def _market_filling_type(self, info: Any) -> int:
+        """Translate SYMBOL_FILLING_MODE flags to one ORDER_FILLING value."""
+        return_filling = int(getattr(self.mt5, "ORDER_FILLING_RETURN"))
+        execution_mode = getattr(info, "trade_exemode", None)
+        market_execution = getattr(self.mt5, "SYMBOL_TRADE_EXECUTION_MARKET", None)
+        if execution_mode is None or market_execution is None:
+            return return_filling
+        if int(execution_mode) != int(market_execution):
+            return return_filling
+
+        flags = int(getattr(info, "filling_mode", 0))
+        fok_flag = int(getattr(self.mt5, "SYMBOL_FILLING_FOK", 1))
+        ioc_flag = int(getattr(self.mt5, "SYMBOL_FILLING_IOC", 2))
+        if flags & fok_flag:
+            return int(getattr(self.mt5, "ORDER_FILLING_FOK"))
+        if flags & ioc_flag:
+            return int(getattr(self.mt5, "ORDER_FILLING_IOC"))
+        raise ValueError("MT5 market-execution symbol allows neither FOK nor IOC filling.")
+
     def _send(self, request: dict[str, Any]) -> Any:
         if not self.orders_enabled:
             raise ValueError("MT5 orders are disabled for this process.")
@@ -246,6 +265,148 @@ class MT5Broker:
             "orders_enabled": self.orders_enabled,
         }
 
+    def readiness_snapshot(self, symbols: list[str]) -> dict[str, Any]:
+        """Validate terminal, account and instruments without sending an order."""
+        terminal_raw = self.mt5.terminal_info()
+        if terminal_raw is None:
+            raise RuntimeError(f"MT5 terminal_info failed: {self.mt5.last_error()}")
+        account_raw = self.mt5.account_info()
+        if account_raw is None:
+            raise RuntimeError(f"MT5 account_info failed: {self.mt5.last_error()}")
+        terminal = _asdict(terminal_raw)
+        account = _asdict(account_raw)
+
+        trade_mode = int(account.get("trade_mode", -1))
+        real_mode = getattr(self.mt5, "ACCOUNT_TRADE_MODE_REAL", None)
+        environment_matches = real_mode is None or (
+            (self.environment == "live" and trade_mode == int(real_mode))
+            or (self.environment == "demo" and trade_mode != int(real_mode))
+        )
+        checks = {
+            "terminal_connected": bool(terminal.get("connected", False)),
+            "terminal_trade_allowed": bool(terminal.get("trade_allowed", False)),
+            "terminal_trade_api_enabled": not bool(terminal.get("tradeapi_disabled", True)),
+            "account_trade_allowed": bool(account.get("trade_allowed", False)),
+            "account_expert_allowed": bool(account.get("trade_expert", False)),
+            "environment_matches": environment_matches,
+        }
+
+        symbol_results: list[dict[str, Any]] = []
+        for internal_symbol in symbols:
+            item: dict[str, Any] = {
+                "symbol": internal_symbol,
+                "broker_symbol": self._broker_symbol(internal_symbol),
+                "ready": False,
+                "order_check_sent": False,
+                "orders_sent": 0,
+            }
+            try:
+                broker_symbol, info = self._symbol_info(internal_symbol)
+                item["broker_symbol"] = broker_symbol
+                tick = self.mt5.symbol_info_tick(broker_symbol)
+                if tick is None:
+                    raise RuntimeError(f"MT5 tick unavailable for {broker_symbol}.")
+                bid = float(getattr(tick, "bid", 0.0))
+                ask = float(getattr(tick, "ask", 0.0))
+                if bid <= 0 or ask <= 0 or ask < bid:
+                    raise ValueError(f"MT5 invalid bid/ask for {broker_symbol}: {bid}/{ask}")
+
+                volume_min = float(getattr(info, "volume_min", 0.0))
+                volume_step = float(getattr(info, "volume_step", 0.0))
+                volume_max = float(getattr(info, "volume_max", 0.0))
+                if volume_min <= 0 or volume_step <= 0 or volume_max < volume_min:
+                    raise ValueError(f"MT5 invalid volume limits for {broker_symbol}.")
+                disabled_mode = getattr(self.mt5, "SYMBOL_TRADE_MODE_DISABLED", None)
+                symbol_trade_mode = getattr(info, "trade_mode", None)
+                if (
+                    disabled_mode is not None
+                    and symbol_trade_mode is not None
+                    and int(symbol_trade_mode) == int(disabled_mode)
+                ):
+                    raise ValueError(f"MT5 trading is disabled for {broker_symbol}.")
+
+                order_mode = getattr(info, "order_mode", None)
+                required_order_flags = {
+                    "market": getattr(self.mt5, "SYMBOL_ORDER_MARKET", None),
+                    "limit": getattr(self.mt5, "SYMBOL_ORDER_LIMIT", None),
+                    "stop_loss": getattr(self.mt5, "SYMBOL_ORDER_SL", None),
+                    "take_profit": getattr(self.mt5, "SYMBOL_ORDER_TP", None),
+                }
+                missing_order_types = []
+                if order_mode is not None:
+                    missing_order_types = [
+                        name
+                        for name, flag in required_order_flags.items()
+                        if flag is not None and not int(order_mode) & int(flag)
+                    ]
+                if missing_order_types:
+                    raise ValueError(
+                        f"MT5 {broker_symbol} does not allow: {', '.join(missing_order_types)}"
+                    )
+
+                point = float(getattr(info, "point", 0.0))
+                digits = int(getattr(info, "digits", 8))
+                stop_points = max(1, int(getattr(info, "trade_stops_level", 0)) + 1)
+                stop_distance = max(ask * 0.01, point * stop_points)
+                request = {
+                    "action": self.mt5.TRADE_ACTION_DEAL,
+                    "symbol": broker_symbol,
+                    "volume": volume_min,
+                    "type": self.mt5.ORDER_TYPE_BUY,
+                    "price": round(ask, digits),
+                    "sl": round(ask - stop_distance, digits),
+                    "tp": round(ask + stop_distance * 1.5, digits),
+                    "deviation": self.deviation_points,
+                    "magic": self.magic,
+                    "comment": "crypto-autobot-preflight",
+                    "type_time": self.mt5.ORDER_TIME_GTC,
+                    "type_filling": self._market_filling_type(info),
+                }
+                result = self.mt5.order_check(request)
+                item["order_check_sent"] = True
+                if result is None:
+                    raise RuntimeError(f"MT5 order_check failed: {self.mt5.last_error()}")
+                retcode = int(getattr(result, "retcode", -1))
+                item.update(
+                    {
+                        "order_check_retcode": retcode,
+                        "order_check_comment": str(getattr(result, "comment", "")),
+                        "minimum_volume": volume_min,
+                        "spread_points": int(getattr(info, "spread", 0)),
+                        "ready": retcode == 0,
+                    }
+                )
+                if retcode != 0:
+                    item["error"] = (
+                        f"MT5 order_check rejected {broker_symbol}: retcode={retcode} "
+                        f"comment={item['order_check_comment']}"
+                    )
+            except Exception as exc:  # noqa: BLE001
+                item["error"] = str(exc)
+            symbol_results.append(item)
+
+        ready = all(checks.values()) and all(item["ready"] for item in symbol_results)
+        return {
+            "ready": ready,
+            "orders_sent": 0,
+            "checks": checks,
+            "terminal": {
+                "connected": bool(terminal.get("connected", False)),
+                "trade_allowed": bool(terminal.get("trade_allowed", False)),
+                "tradeapi_disabled": bool(terminal.get("tradeapi_disabled", True)),
+                "build": terminal.get("build"),
+                "company": terminal.get("company"),
+            },
+            "account": {
+                "server": account.get("server"),
+                "company": account.get("company"),
+                "currency": account.get("currency"),
+                "leverage": account.get("leverage"),
+                "trade_mode": trade_mode,
+            },
+            "symbols": symbol_results,
+        }
+
     def get_balance(self) -> dict[str, Any]:
         summary = self.account_summary()
         return {
@@ -299,7 +460,7 @@ class MT5Broker:
             "type_filling": (
                 self.mt5.ORDER_FILLING_RETURN
                 if pending
-                else getattr(info, "filling_mode", self.mt5.ORDER_FILLING_RETURN)
+                else self._market_filling_type(info)
             ),
         }
 
@@ -442,7 +603,7 @@ class MT5Broker:
             "magic": self.magic,
             "comment": "crypto-autobot-close",
             "type_time": self.mt5.ORDER_TIME_GTC,
-            "type_filling": getattr(info, "filling_mode", self.mt5.ORDER_FILLING_RETURN),
+            "type_filling": self._market_filling_type(info),
         }
         result = self._send(request)
         return {"symbol": symbol, "price": float(getattr(result, "price", 0.0) or price)}

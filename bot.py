@@ -2200,10 +2200,19 @@ def broker_readiness_snapshot(ctx: BotContext) -> dict[str, Any]:
         )
     interval = str(ctx.config["market"]["interval"])
     max_age = float(ctx.config["market"].get("max_candle_age_intervals", 2.0))
+    configured_symbols = [
+        str(symbol).upper() for symbol in ctx.config["market"]["symbols"]
+    ]
+    provider_checks: dict[str, Any] = {}
+    provider_readiness = getattr(ctx.broker, "readiness_snapshot", None)
+    if callable(provider_readiness):
+        provider_checks = provider_readiness(configured_symbols)
     symbols: list[dict[str, Any]] = []
-    ready = float(summary.get("available_balance", 0.0)) > 0
-    for configured_symbol in ctx.config["market"]["symbols"]:
-        symbol = str(configured_symbol).upper()
+    ready = (
+        float(summary.get("available_balance", 0.0)) > 0
+        and bool(provider_checks.get("ready", True))
+    )
+    for symbol in configured_symbols:
         item: dict[str, Any] = {"symbol": symbol, "ready": False}
         try:
             candles = fetch_market_candles(ctx, symbol)
@@ -2242,6 +2251,7 @@ def broker_readiness_snapshot(ctx: BotContext) -> dict[str, Any]:
         "position_mode": summary.get("position_mode"),
         "orders_enabled": summary.get("orders_enabled"),
         "orders_sent": 0,
+        "broker_checks": provider_checks,
         "symbols": symbols,
     }
 
@@ -3491,11 +3501,15 @@ def run_server(controller: RuntimeController) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Crypto Autobot: paper and Binance Futures trading.")
+    parser = argparse.ArgumentParser(description="Crypto Autobot: Binance Futures and MT5 trading.")
     parser.add_argument("--config", default="crypto_autobot/config.example.json")
     parser.add_argument("--once", action="store_true", help="run one scan and exit")
-    parser.add_argument("--check", action="store_true", help="check Binance credentials without placing orders")
-    parser.add_argument("--enable-orders", action="store_true", help="allow Binance order placement")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="check broker, market data and MT5 order parameters without placing orders",
+    )
+    parser.add_argument("--enable-orders", action="store_true", help="allow broker order placement")
     parser.add_argument(
         "--allow-live-ui",
         action="store_true",

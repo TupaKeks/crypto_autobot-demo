@@ -456,6 +456,7 @@ IP сервера отсутствует в whitelist.
 - рассчитывать lot по стоимости стопа у брокера;
 - ставить market и limit-заявки с прикреплёнными SL/TP;
 - отказываться от сделки, если минимальный lot превысит заданный риск.
+- выбирать допустимый FOK/IOC/RETURN по режиму исполнения конкретного символа.
 
 MT5-профиль запускается отдельно, а его статистика сохраняется в
 `state_mt5_demo.json` и `trades_mt5_demo.csv`. Сначала открой Demo-счёт у
@@ -480,6 +481,19 @@ python crypto_autobot/bot.py \
   --check
 ```
 
+Эта команда не вызывает `order_send` и показывает `orders_sent: 0`. Она проверяет:
+
+- `terminal_info`: подключение, кнопку AutoTrading и запрет Python trade API;
+- `account_info`: Demo/Live-тип, `trade_allowed` и `trade_expert`;
+- точное имя каждой пары, bid/ask, минимальный и шаговый lot;
+- наличие market, limit, Stop Loss и Take Profit у символа;
+- историю закрытых 15m-баров и её свежесть;
+- серверный `order_check` с минимальным lot и прикреплёнными SL/TP.
+
+Продолжать можно только если верхнее поле отчёта равно `"ready": true`, все
+символы имеют `"ready": true`, а `orders_sent` по-прежнему равен нулю. Отказ
+`order_check` означает, что брокер не принимает параметры ещё до реальной заявки.
+
 И только после успешной проверки запусти Demo-ордера:
 
 ```bash
@@ -498,6 +512,12 @@ Task Scheduler или менеджер Windows-служб. `install_macos_demo_s
 [`order_send`](https://www.mql5.com/en/docs/python_metatrader5/mt5ordersend_py). История закрытых баров читается через
 [`copy_rates_from_pos`](https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesfrompos_py): позиция `0` является
 текущим формирующимся баром, поэтому бот начинает с позиции `1`.
+Разрешения терминала читаются через
+[`terminal_info`](https://www.mql5.com/en/docs/python_metatrader5/mt5terminalinfo_py),
+разрешения счёта через
+[`account_info`](https://www.mql5.com/en/docs/python_metatrader5/mt5accountinfo_py),
+а параметры безопасно проверяются через
+[`order_check`](https://www.mql5.com/en/docs/python_metatrader5/mt5ordercheck_py).
 Конкретный MT5 Demo нельзя считать проверенным, пока не выбран брокер и не сделан
 маленький защищённый тестовый ордер на его сервере.
 

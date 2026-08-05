@@ -16,7 +16,18 @@ class FakeMT5:
     ORDER_TYPE_BUY_LIMIT = 2
     ORDER_TYPE_SELL_LIMIT = 3
     ORDER_TIME_GTC = 0
+    ORDER_FILLING_FOK = 0
+    ORDER_FILLING_IOC = 1
     ORDER_FILLING_RETURN = 2
+    SYMBOL_FILLING_FOK = 1
+    SYMBOL_FILLING_IOC = 2
+    SYMBOL_TRADE_EXECUTION_MARKET = 2
+    SYMBOL_TRADE_MODE_DISABLED = 0
+    SYMBOL_TRADE_MODE_FULL = 4
+    SYMBOL_ORDER_MARKET = 1
+    SYMBOL_ORDER_LIMIT = 2
+    SYMBOL_ORDER_SL = 16
+    SYMBOL_ORDER_TP = 32
     POSITION_TYPE_BUY = 0
     TRADE_RETCODE_DONE = 10009
     TRADE_RETCODE_PLACED = 10008
@@ -38,8 +49,23 @@ class FakeMT5:
         self.positions = []
         self.deals = []
         self.trade_mode = self.ACCOUNT_TRADE_MODE_DEMO
+        self.terminal_connected = True
+        self.terminal_trade_allowed = True
+        self.tradeapi_disabled = False
+        self.account_trade_allowed = True
+        self.account_trade_expert = True
+        self.symbol_trade_mode = self.SYMBOL_TRADE_MODE_FULL
+        self.symbol_order_mode = (
+            self.SYMBOL_ORDER_MARKET
+            | self.SYMBOL_ORDER_LIMIT
+            | self.SYMBOL_ORDER_SL
+            | self.SYMBOL_ORDER_TP
+        )
+        self.symbol_filling_mode = self.SYMBOL_FILLING_FOK | self.SYMBOL_FILLING_IOC
+        self.symbol_trade_exemode = self.SYMBOL_TRADE_EXECUTION_MARKET
         self.rates = []
         self.rate_requests = []
+        self.order_checks = []
 
     def initialize(self, *args, **kwargs):
         return True
@@ -50,6 +76,15 @@ class FakeMT5:
     def last_error(self):
         return (0, "ok")
 
+    def terminal_info(self):
+        return SimpleNamespace(
+            connected=self.terminal_connected,
+            trade_allowed=self.terminal_trade_allowed,
+            tradeapi_disabled=self.tradeapi_disabled,
+            build=5000,
+            company="Test Broker",
+        )
+
     def account_info(self):
         return SimpleNamespace(
             balance=10_000.0,
@@ -57,6 +92,11 @@ class FakeMT5:
             currency="USD",
             margin_mode=0,
             trade_mode=self.trade_mode,
+            trade_allowed=self.account_trade_allowed,
+            trade_expert=self.account_trade_expert,
+            server="TestBroker-Demo",
+            company="Test Broker",
+            leverage=20,
         )
 
     def symbol_info(self, symbol):
@@ -66,7 +106,13 @@ class FakeMT5:
             volume_min=0.01,
             volume_max=10.0,
             digits=2,
-            filling_mode=self.ORDER_FILLING_RETURN,
+            filling_mode=self.symbol_filling_mode,
+            trade_exemode=self.symbol_trade_exemode,
+            trade_mode=self.symbol_trade_mode,
+            order_mode=self.symbol_order_mode,
+            trade_stops_level=10,
+            point=0.01,
+            spread=10,
         )
 
     def symbol_select(self, symbol, enabled):
@@ -92,6 +138,10 @@ class FakeMT5:
             price=request.get("price", 0.0),
             comment="done",
         )
+
+    def order_check(self, request):
+        self.order_checks.append(dict(request))
+        return SimpleNamespace(retcode=0, comment="Done", margin=1.0, margin_free=8_999.0)
 
     def history_deals_get(self, *args, **kwargs):
         return tuple(self.deals)
@@ -227,6 +277,57 @@ class MT5BrokerTests(unittest.TestCase):
                 risk_percent=0.15,
                 max_open_positions=3,
             )
+
+    def test_readiness_checks_terminal_account_symbols_without_sending_orders(self):
+        result = self.broker.readiness_snapshot(["BTCUSDT"])
+
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["orders_sent"], 0)
+        self.assertEqual(len(self.mt5.order_checks), 1)
+        self.assertEqual(self.mt5.requests, [])
+        self.assertEqual(result["symbols"][0]["broker_symbol"], "BTCUSD")
+        self.assertTrue(result["symbols"][0]["order_check_sent"])
+        self.assertEqual(
+            self.mt5.order_checks[0]["type_filling"],
+            self.mt5.ORDER_FILLING_FOK,
+        )
+
+    def test_readiness_rejects_disabled_terminal_trading(self):
+        self.mt5.terminal_trade_allowed = False
+
+        result = self.broker.readiness_snapshot(["BTCUSDT"])
+
+        self.assertFalse(result["ready"])
+        self.assertFalse(result["checks"]["terminal_trade_allowed"])
+        self.assertEqual(result["orders_sent"], 0)
+        self.assertEqual(self.mt5.requests, [])
+
+    def test_readiness_rejects_missing_limit_or_protection_support(self):
+        self.mt5.symbol_order_mode = self.mt5.SYMBOL_ORDER_MARKET
+
+        result = self.broker.readiness_snapshot(["BTCUSDT"])
+
+        self.assertFalse(result["ready"])
+        self.assertIn("limit", result["symbols"][0]["error"])
+        self.assertIn("stop_loss", result["symbols"][0]["error"])
+        self.assertFalse(result["symbols"][0]["order_check_sent"])
+        self.assertEqual(self.mt5.requests, [])
+
+    def test_market_order_uses_a_concrete_symbol_filling_policy(self):
+        result = self.broker.open_position(
+            symbol="BTCUSDT",
+            side="long",
+            stop_distance=2.0,
+            target_distance=4.0,
+            risk_percent=0.15,
+            max_open_positions=3,
+        )
+
+        self.assertEqual(result["entry"], 100.0)
+        self.assertEqual(
+            self.mt5.requests[-1]["type_filling"],
+            self.mt5.ORDER_FILLING_FOK,
+        )
 
     def test_live_orders_require_explicit_confirmation(self):
         with self.assertRaisesRegex(ValueError, "live order safety lock"):

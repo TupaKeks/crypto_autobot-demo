@@ -1155,6 +1155,52 @@ class BotModeTests(unittest.TestCase):
             self.assertEqual({item["symbol"] for item in result["symbols"]}, {"BTCUSDT", "ETHUSDT"})
             self.assertIsNone(broker.last_open_kwargs)
 
+    def test_mt5_provider_preflight_can_block_generic_readiness(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = mode_config(tmp, "demo")
+            config["broker"]["provider"] = "mt5"
+            config["market"].update({"symbols": ["BTCUSDT"], "interval": "15m"})
+            broker = FakeBroker()
+            broker.readiness_snapshot = lambda symbols: {
+                "ready": False,
+                "orders_sent": 0,
+                "checks": {"terminal_trade_allowed": False},
+                "symbols": [{"symbol": symbols[0], "ready": False}],
+            }
+            ctx = BotContext(
+                config=config,
+                state_path=Path(tmp) / "state_mt5_demo.json",
+                trades_path=Path(tmp) / "trades_mt5_demo.csv",
+                timezone=ZoneInfo("UTC"),
+                mode="demo",
+                broker=broker,
+                orders_enabled=False,
+                exchange_snapshot={},
+                lock=threading.Lock(),
+                stop_event=threading.Event(),
+            )
+            now_ms = int(time.time() * 1000)
+            candles = [
+                Candle(
+                    open_time=now_ms - (40 - index) * 900_000,
+                    open=100,
+                    high=101,
+                    low=99,
+                    close=100,
+                    volume=10,
+                    close_time=now_ms - (39 - index) * 900_000 - 1,
+                )
+                for index in range(40)
+            ]
+
+            with patch("crypto_autobot.bot.fetch_market_candles", return_value=candles):
+                result = broker_readiness_snapshot(ctx)
+
+            self.assertFalse(result["ready"])
+            self.assertFalse(result["broker_checks"]["ready"])
+            self.assertEqual(result["orders_sent"], 0)
+            self.assertIsNone(broker.last_open_kwargs)
+
     def test_side_specific_risk_changes_paper_position_size(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = test_config(tmp)
