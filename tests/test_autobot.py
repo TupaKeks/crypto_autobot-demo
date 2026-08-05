@@ -905,6 +905,7 @@ class BotModeTests(unittest.TestCase):
                         "time": "2026-08-02T00:30:00+00:00",
                         "event": "close",
                         "pnl": 3.0,
+                        "realized_r": 1.5,
                         "validation_date": "2026-08-01",
                     },
                     {
@@ -918,8 +919,9 @@ class BotModeTests(unittest.TestCase):
             ensure_validation_daily_history(legacy, ctx.timezone)
             ensure_validation_daily_history(legacy, ctx.timezone)
 
-            self.assertEqual(legacy["validation_daily_version"], 1)
+            self.assertEqual(legacy["validation_daily_version"], 2)
             self.assertEqual(legacy["daily"]["2026-08-01"]["validation_pnls"], [3.0])
+            self.assertEqual(legacy["daily"]["2026-08-01"]["validation_realized_rs"], [1.5])
             self.assertEqual(legacy["daily"]["2026-08-01"]["validation_closed"], 1)
 
     def test_validation_profile_change_resets_only_forward_evidence(self):
@@ -1632,6 +1634,12 @@ class BotModeTests(unittest.TestCase):
 
             self.assertAlmostEqual(state["balance"], 1006.9886, places=4)
             self.assertAlmostEqual(state["realized_pnl"], 6.9886, places=4)
+            self.assertAlmostEqual(state["trades"][-1]["realized_r"], 6.9886 / 5.0, places=4)
+            self.assertAlmostEqual(
+                next(iter(state["daily"].values()))["validation_realized_rs"][0],
+                6.9886 / 5.0,
+                places=4,
+            )
 
     def test_position_keeps_its_own_ml_rr_and_time_exit(self):
         with tempfile.TemporaryDirectory() as tmp:

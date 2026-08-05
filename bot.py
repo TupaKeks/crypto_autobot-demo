@@ -52,6 +52,7 @@ INTRADAY_STRATEGIES = {
 ROOT = Path(__file__).resolve().parent
 VALIDATION_DAILY_KEYS = {
     "validation_pnls",
+    "validation_realized_rs",
     "validation_closed",
     "validation_wins",
     "validation_losses",
@@ -252,8 +253,14 @@ def validation_trade_date(row: dict[str, Any], timezone: ZoneInfo) -> str:
     return parsed.astimezone(timezone).date().isoformat()
 
 
-def record_validation_close(day: dict[str, Any], pnl: float) -> None:
+def record_validation_close(
+    day: dict[str, Any],
+    pnl: float,
+    realized_r: float | None = None,
+) -> None:
     day.setdefault("validation_pnls", []).append(float(pnl))
+    if realized_r is not None and math.isfinite(realized_r):
+        day.setdefault("validation_realized_rs", []).append(float(realized_r))
     day["validation_closed"] = int(day.get("validation_closed", 0)) + 1
     if pnl > 0:
         day["validation_wins"] = int(day.get("validation_wins", 0)) + 1
@@ -265,10 +272,30 @@ def record_validation_close(day: dict[str, Any], pnl: float) -> None:
 
 
 def ensure_validation_daily_history(state: dict[str, Any], timezone: ZoneInfo) -> None:
-    if int(state.get("validation_daily_version", 0)) == 1:
+    version = int(state.get("validation_daily_version", 0))
+    if version >= 2:
         return
 
     daily = state.setdefault("daily", {})
+    if version == 1:
+        for day in daily.values():
+            if isinstance(day, dict):
+                day.pop("validation_realized_rs", None)
+        for row in state.get("trades", []):
+            if (
+                str(row.get("event", "")) != "close"
+                or str(row.get("source", "baseline")) == "manual_demo_test"
+                or row.get("realized_r") is None
+            ):
+                continue
+            date_key = validation_trade_date(row, timezone)
+            day = daily.setdefault(date_key, {"trades": 0, "realized_pnl": 0.0})
+            realized_r = float(row["realized_r"])
+            if math.isfinite(realized_r):
+                day.setdefault("validation_realized_rs", []).append(realized_r)
+        state["validation_daily_version"] = 2
+        return
+
     for day in daily.values():
         if isinstance(day, dict):
             for key in VALIDATION_DAILY_KEYS:
@@ -281,8 +308,13 @@ def ensure_validation_daily_history(state: dict[str, Any], timezone: ZoneInfo) -
             continue
         date_key = validation_trade_date(row, timezone)
         day = daily.setdefault(date_key, {"trades": 0, "realized_pnl": 0.0})
-        record_validation_close(day, float(row.get("pnl", 0.0)))
-    state["validation_daily_version"] = 1
+        realized_r = row.get("realized_r")
+        record_validation_close(
+            day,
+            float(row.get("pnl", 0.0)),
+            float(realized_r) if realized_r is not None else None,
+        )
+    state["validation_daily_version"] = 2
 
 
 def validation_profile_payload(ctx: BotContext) -> dict[str, Any]:
@@ -335,7 +367,7 @@ def reset_validation_evidence(
         day["validation_trades"] = 0
         for key in VALIDATION_DAILY_KEYS:
             day.pop(key, None)
-    state["validation_daily_version"] = 1
+    state["validation_daily_version"] = 2
     state["execution_diagnostics"] = {
         "started_at": reset_at,
         "candles_observed": 0,
@@ -419,7 +451,7 @@ def ensure_state(ctx: BotContext) -> dict[str, Any]:
         "latest": {},
         "logs": [],
         "validation_coverage": {},
-        "validation_daily_version": 1,
+        "validation_daily_version": 2,
         "execution_diagnostics": {
             "started_at": now_iso(ctx.timezone),
             "candles_observed": 0,
@@ -519,7 +551,12 @@ def append_trade(ctx: BotContext, state: dict[str, Any], row: dict[str, Any]) ->
             date_key,
             {"trades": 0, "realized_pnl": 0.0},
         )
-        record_validation_close(day, float(row.get("pnl", 0.0)))
+        realized_r = row.get("realized_r")
+        record_validation_close(
+            day,
+            float(row.get("pnl", 0.0)),
+            float(realized_r) if realized_r is not None else None,
+        )
     state["trades"] = state["trades"][-500:]
     with ctx.trades_path.open("a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -803,6 +840,17 @@ def position_unrealized(position: dict[str, Any], price: float) -> float:
     return (entry - price) * qty
 
 
+def position_realized_r(position: dict[str, Any], pnl: float) -> float | None:
+    entry = float(position.get("entry", 0.0))
+    initial_stop = float(position.get("initial_stop", position.get("stop", 0.0)))
+    quantity = abs(float(position.get("qty", position.get("quantity", 0.0))))
+    initial_risk = abs(entry - initial_stop) * quantity
+    if initial_risk <= 0 or not math.isfinite(initial_risk):
+        return None
+    realized_r = float(pnl) / initial_risk
+    return realized_r if math.isfinite(realized_r) else None
+
+
 def can_trade(state: dict[str, Any], ctx: BotContext) -> tuple[bool, str]:
     account = ctx.config["account"]
     if ctx.mode != "paper":
@@ -882,6 +930,7 @@ def close_position(
         "stop": round(float(position["stop"]), 8),
         "target": round(float(position["target"]), 8),
         "pnl": round(pnl, 2),
+        "realized_r": position_realized_r(position, pnl),
         "balance": round(float(state["balance"]), 2),
         "reason": reason,
         "source": str(position.get("source", "baseline")),
@@ -1305,6 +1354,7 @@ def record_exchange_close(
         "stop": round(float(position["stop"]), 8),
         "target": round(float(position["target"]), 8),
         "pnl": round(pnl, 2),
+        "realized_r": position_realized_r(position, pnl),
         "balance": round(float(state["balance"]), 2),
         "reason": (
             f"{broker_name(ctx)} position closed; realized={pnl_info['realized_pnl']:.2f}, "
@@ -2565,6 +2615,14 @@ def dashboard_html(app_name: str) -> str:
         </table></div>
       </section>
       <section>
+        <h2>Надёжность выборки</h2>
+        <div class="log" id="confidenceSummary">Собираем статистику...</div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Метрика</th><th>Оценка</th><th>Что означает</th></tr></thead>
+          <tbody id="confidenceRows"></tbody>
+        </table></div>
+      </section>
+      <section>
         <h2>Исполнение сигналов</h2>
         <div class="tablewrap"><table>
           <thead><tr><th>Закрытых свечей</th><th>Заявок</th><th>Исполнено</th><th>Истекло</th><th>Отменено</th><th>Fill rate</th></tr></thead>
@@ -2701,6 +2759,26 @@ async function loadState() {{
   document.getElementById('validationRows').innerHTML = validationChecks.length
     ? validationChecks.map(item => `<tr><td>${{esc(item.label)}}</td><td>${{esc(item.display_value || item.value)}}</td><td>${{esc(item.target)}}</td><td class="${{item.passed ? 'green' : 'red'}}">${{item.passed ? 'OK' : 'ЖДЁМ'}}</td></tr>`).join('')
     : emptyRow(4, 'Demo-метрики недоступны');
+
+  const confidence = validation.confidence || {{}};
+  const interval = (item, suffix = '') => item?.lower === null || item?.lower === undefined
+    ? '-'
+    : `${{num(item.lower)}}..${{num(item.upper)}}${{suffix}}`;
+  document.getElementById('confidenceSummary').textContent =
+    `Прогресс доказательной выборки: ${{money(confidence.sample_progress_percent)}}%. ` +
+    `Положительный expectancy: ${{confidence.positive_expectancy_supported ? 'подтверждён выборкой' : 'ещё не подтверждён'}}. ` +
+    `Интервалы приблизительные и не гарантируют будущую прибыль.`;
+  const meanR = confidence.mean_realized_r_95 || {{}};
+  const payoff = confidence.payoff_ratio === null || confidence.payoff_ratio === undefined
+    ? '-'
+    : `1:${{num(confidence.payoff_ratio)}}; BE WR ${{num(confidence.break_even_win_rate_percent)}}%`;
+  document.getElementById('confidenceRows').innerHTML = [
+    ['Win rate, 95%', interval(confidence.win_rate_95_percent, '%'), 'Диапазон правдоподобных значений WR'],
+    ['Expectancy/сделку, ~95%', interval(confidence.mean_pnl_95, ' USDT'), 'Нижняя граница должна быть выше нуля'],
+    ['Средний результат, R', interval(meanR, 'R'), `Покрытие: ${{confidence.realized_r_coverage || 0}} сделок`],
+    ['Частота/день, ~95%', interval(confidence.trades_per_day_95), 'Разброс между подтверждёнными днями'],
+    ['Payoff / break-even', payoff, `Запас WR: ${{num(confidence.edge_over_break_even_points)}} п.п.`],
+  ].map(item => `<tr><td>${{esc(item[0])}}</td><td>${{esc(item[1])}}</td><td>${{esc(item[2])}}</td></tr>`).join('');
 
   const execution = data.execution_diagnostics || {{}};
   document.getElementById('executionRows').innerHTML = `<tr>` +

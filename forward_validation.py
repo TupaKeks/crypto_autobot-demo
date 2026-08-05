@@ -47,6 +47,47 @@ def _max_drawdown_percent(initial_balance: float, closed_trades: list[dict[str, 
     return max_drawdown
 
 
+def _mean_confidence_interval(values: list[float]) -> dict[str, float | int | None]:
+    count = len(values)
+    if not values:
+        return {"count": 0, "mean": None, "lower": None, "upper": None}
+    mean = sum(values) / count
+    if count < 2:
+        return {"count": count, "mean": mean, "lower": None, "upper": None}
+    variance = sum((value - mean) ** 2 for value in values) / (count - 1)
+    margin = 1.96 * math.sqrt(variance / count)
+    return {
+        "count": count,
+        "mean": mean,
+        "lower": mean - margin,
+        "upper": mean + margin,
+    }
+
+
+def _wilson_interval(successes: int, total: int) -> dict[str, float | int | None]:
+    if total <= 0:
+        return {"count": 0, "lower": None, "upper": None}
+    z = 1.96
+    proportion = successes / total
+    denominator = 1.0 + z * z / total
+    center = (proportion + z * z / (2.0 * total)) / denominator
+    margin = z * math.sqrt(
+        proportion * (1.0 - proportion) / total + z * z / (4.0 * total * total)
+    ) / denominator
+    return {
+        "count": total,
+        "lower": max(0.0, center - margin) * 100.0,
+        "upper": min(1.0, center + margin) * 100.0,
+    }
+
+
+def _rounded_interval(interval: dict[str, float | int | None], digits: int = 3) -> dict[str, Any]:
+    return {
+        key: round(float(value), digits) if isinstance(value, float) else value
+        for key, value in interval.items()
+    }
+
+
 def _is_validation_trade(trade: dict[str, Any]) -> bool:
     return str(trade.get("source", "baseline")) != "manual_demo_test"
 
@@ -123,6 +164,18 @@ def forward_validation_report(
     }
     if coverage_enabled:
         qualified_rows = [daily_map[date_key] for date_key in qualified_dates if date_key in daily_map]
+        daily_trade_counts = [
+            max(
+                0,
+                int(
+                    daily_map.get(date_key, {}).get(
+                        "validation_trades",
+                        daily_map.get(date_key, {}).get("trades", 0),
+                    )
+                ),
+            )
+            for date_key in qualified_dates
+        ]
         opened_count = sum(
             max(0, int(row.get("validation_trades", row.get("trades", 0))))
             for row in qualified_rows
@@ -131,6 +184,11 @@ def forward_validation_report(
             float(pnl)
             for row in qualified_rows
             for pnl in row.get("validation_pnls", [])
+        ]
+        realized_r_values = [
+            float(realized_r)
+            for row in qualified_rows
+            for realized_r in row.get("validation_realized_rs", [])
         ]
         if not any("validation_pnls" in row for row in qualified_rows):
             qualified_set = set(qualified_dates)
@@ -149,6 +207,13 @@ def forward_validation_report(
                 float(item.get("pnl", 0.0))
                 for item in qualified_trades
                 if item.get("event") == "close" and _is_validation_trade(item)
+            ]
+            realized_r_values = [
+                float(item["realized_r"])
+                for item in qualified_trades
+                if item.get("event") == "close"
+                and _is_validation_trade(item)
+                and item.get("realized_r") is not None
             ]
     else:
         opened = [
@@ -176,6 +241,22 @@ def forward_validation_report(
         )
         opened_count = max(len(opened), daily_opened)
         pnl_values = [float(item.get("pnl", 0.0)) for item in closed]
+        realized_r_values = [
+            float(item["realized_r"])
+            for item in closed
+            if item.get("realized_r") is not None
+        ]
+        daily_trade_counts = [
+            max(
+                0,
+                int(
+                    item.get("validation_trades", 0)
+                    if has_daily_open_totals
+                    else item.get("trades", 0)
+                ),
+            )
+            for item in daily_rows
+        ]
 
     closed_count = len(pnl_values)
     wins_count = sum(pnl > 0 for pnl in pnl_values)
@@ -199,6 +280,42 @@ def forward_validation_report(
 
     enough_days = observation_days >= float(rules["min_observation_days"])
     enough_trades = closed_count >= int(rules["min_closed_trades"])
+    win_rate_interval = _wilson_interval(wins_count, closed_count)
+    expectancy_interval = _mean_confidence_interval(pnl_values)
+    realized_r_interval = (
+        _mean_confidence_interval(realized_r_values)
+        if len(realized_r_values) == closed_count
+        else _mean_confidence_interval([])
+    )
+    frequency_interval = _mean_confidence_interval(
+        [float(value) for value in daily_trade_counts]
+    )
+    expectancy_lower = expectancy_interval.get("lower")
+    positive_expectancy_confident = bool(
+        enough_trades
+        and expectancy_lower is not None
+        and float(expectancy_lower) > 0.0
+    )
+    average_win = gross_profit / wins_count if wins_count else None
+    losses_count = sum(pnl < 0 for pnl in pnl_values)
+    average_loss = gross_loss / losses_count if losses_count else None
+    payoff_ratio = (
+        average_win / average_loss
+        if average_win is not None and average_loss is not None and average_loss > 0
+        else None
+    )
+    break_even_win_rate = (
+        100.0 / (1.0 + payoff_ratio)
+        if payoff_ratio is not None and payoff_ratio > 0
+        else None
+    )
+    sample_progress = min(
+        100.0,
+        min(
+            observation_days / max(1.0, float(rules["min_observation_days"])),
+            closed_count / max(1, int(rules["min_closed_trades"])),
+        ) * 100.0,
+    )
     checks = [
         {
             "id": "observation_days",
@@ -243,6 +360,25 @@ def forward_validation_report(
                 profit_factor_infinite
                 or (profit_factor is not None and profit_factor >= float(rules["min_profit_factor"]))
             ),
+        },
+        {
+            "id": "expectancy_confidence",
+            "label": "Expectancy, ~95% CI",
+            "value": (
+                None
+                if expectancy_interval["mean"] is None
+                else round(float(expectancy_interval["mean"]), 3)
+            ),
+            "display_value": (
+                None
+                if expectancy_interval["lower"] is None
+                else (
+                    f"{float(expectancy_interval['lower']):.3f}.."
+                    f"{float(expectancy_interval['upper']):.3f} USDT"
+                )
+            ),
+            "target": "нижняя граница > 0",
+            "passed": positive_expectancy_confident,
         },
         {
             "id": "return_percent",
@@ -305,5 +441,29 @@ def forward_validation_report(
         "return_percent": round(return_percent, 2),
         "max_drawdown_percent": round(drawdown, 2),
         "nominal_reward_risk": round(nominal_rr, 2),
+        "confidence": {
+            "method_note": (
+                "Approximate 95% normal interval for mean PnL and Wilson interval for win rate; "
+                "diagnostic, not a profit guarantee."
+            ),
+            "sample_progress_percent": round(sample_progress, 2),
+            "positive_expectancy_supported": positive_expectancy_confident,
+            "win_rate_95_percent": _rounded_interval(win_rate_interval, 2),
+            "mean_pnl_95": _rounded_interval(expectancy_interval, 3),
+            "mean_realized_r_95": _rounded_interval(realized_r_interval, 3),
+            "realized_r_coverage": len(realized_r_values),
+            "trades_per_day_95": _rounded_interval(frequency_interval, 2),
+            "average_win": round(average_win, 3) if average_win is not None else None,
+            "average_loss": round(average_loss, 3) if average_loss is not None else None,
+            "payoff_ratio": round(payoff_ratio, 3) if payoff_ratio is not None else None,
+            "break_even_win_rate_percent": (
+                round(break_even_win_rate, 2) if break_even_win_rate is not None else None
+            ),
+            "edge_over_break_even_points": (
+                round(win_rate - break_even_win_rate, 2)
+                if break_even_win_rate is not None
+                else None
+            ),
+        },
         "checks": checks,
     }
